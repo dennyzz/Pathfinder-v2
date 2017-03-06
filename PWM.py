@@ -11,6 +11,14 @@ PWM.add_channel_pulse(0, 17, 100, 50)
 # Stop PWM for specific GPIO on channel 0
 PWM.clear_channel_gpio(0, 17)
 
+while True:
+    #hellos
+    print("hi")
+
+
+
+
+    
 # Shutdown all PWM and DMA activity
 PWM.cleanup()
 
