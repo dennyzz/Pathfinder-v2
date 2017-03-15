@@ -1,5 +1,5 @@
-raspivid -t 30000 -w 1280 -h 1024 -fps 25 -b 1200000 -p 0,0,1280,1024 -o pivideo.h264
-
+raspivid -t 15000 -w 1280 -h 1024 -fps 25 -b 1200000 -p 0,0,1280,1024 -o pivideo.h264
+MP4Box -add pivideo.h264 pivideo.mp4
 
 angles are approximate at 8 inches high
 
