@@ -2,7 +2,7 @@ import time
 import cv2
 import numpy as np
 
-cap = cv2.VideoCapture("10degree.mp4")
+cap = cv2.VideoCapture("radius2angle75.mp4")
 
 while(True):
 	ret, frame = cap.read()
