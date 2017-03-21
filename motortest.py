@@ -3,18 +3,18 @@ import smbus
 
 while(True):
 
-bus = smbus.SMBus(1)    # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
+    bus = smbus.SMBus(1)    # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
 
-DEVICE_ADDRESS = 0x40      #7 bit address (will be left shifted to add the read write bit)
-DEVICE_REG_MOT1A = 0x06+8
-DEVICE_REG_LEDOUT0 = 0x1d
+    DEVICE_ADDRESS = 0x40      #7 bit address (will be left shifted to add the read write bit)
+    DEVICE_REG_MOT1A = 0x06+8
+    DEVICE_REG_LEDOUT0 = 0x1d
 
-#Write a single register
-# bus.write_byte_data(DEVICE_ADDRESS, DEVICE_REG_MODE1, 0x80)
+    #Write a single register
+    # bus.write_byte_data(DEVICE_ADDRESS, DEVICE_REG_MODE1, 0x80)
 
-#Write an array of registers
-pwm_values = [0x80, 0x00, 0xFF, 0xFF]
-bus.write_i2c_block_data(DEVICE_ADDRESS, DEVICE_REG_MOT1A, pwm_values)
+    #Write an array of registers
+    pwm_values = [0x80, 0x00, 0xFF, 0xFF]
+    bus.write_i2c_block_data(DEVICE_ADDRESS, DEVICE_REG_MOT1A, pwm_values)
 
 
 # void Adafruit_MS_PWMServoDriver::setPWM(uint8_t num, uint16_t on, uint16_t off) {
