@@ -41,6 +41,8 @@ while(True):
     distance = tof.get_distance()
     if (distance < 150 and distance != -1):
         # stop the motors from running
+		print("Am breaking")
+		break
 	
 	# run camera capture and image processing
 	
