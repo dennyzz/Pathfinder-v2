@@ -65,10 +65,8 @@ while(True):
 	cv2.imshow("Frame", frame)
 	key = cv2.waitKey(1) & 0xFF
 
-	# pipe.stdout.flush()
-
 	# clear the stream in preparation for the next frame
-	#rawCapture.truncate(0)
+	rawCapture.truncate(0)
 
 	#if the `q` key was pressed, break from the loop
 	if key == ord("q"):
