@@ -6,7 +6,7 @@
 import smbus
 import sys
 
-def motorcmd(select, speed, dir):
+def motorcmd(select, speed, dir, brake):
     # motor select 1 and 2 are M1 M2 channels
     bus = smbus.SMBus(1)    # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
     DEVICE_ADDRESS = 0x60      #7 bit address (will be left shifted to add the read write bit)
@@ -22,7 +22,8 @@ def motorcmd(select, speed, dir):
     PCA9685_PRESCALE = 0xFE
     PCA_MODE = 0x21
     bus.write_byte_data(DEVICE_ADDRESS, PCA9685_MODE1, PCA_MODE | 0x10)
-    bus.write_byte_data(DEVICE_ADDRESS, PCA9685_PRESCALE, 0x06)
+    bus.write_byte_data(DEVICE_ADDRESS, PCA9685_PRESCALE, 0x64) #54Hz ish
+    bus.write_byte_data(DEVICE_ADDRESS, PCA9685_PRESCALE, 0x0) #54Hz ish
     bus.write_byte_data(DEVICE_ADDRESS, PCA9685_MODE1, PCA_MODE)
     pwm_on = [0x00, 0x10, 0xFF, 0x0F]
     pwm_off = [0x00, 0x00, 0xFF, 0x1F]
@@ -43,15 +44,20 @@ def motorcmd(select, speed, dir):
     else:
         print("wtf")
 
-
-
     bus.write_i2c_block_data(DEVICE_ADDRESS, motPWM, pwm_on)
-    if(dir == 1):
-        bus.write_i2c_block_data(DEVICE_ADDRESS, motA, pwm_speed)
+    if(brake):
+        bus.write_i2c_block_data(DEVICE_ADDRESS, motA, pwm_on)
+        bus.write_i2c_block_data(DEVICE_ADDRESS, motB, pwm_on)
+    elif(speed == 4096):
+        bus.write_i2c_block_data(DEVICE_ADDRESS, motA, pwm_off)
         bus.write_i2c_block_data(DEVICE_ADDRESS, motB, pwm_off)
     else:
-        bus.write_i2c_block_data(DEVICE_ADDRESS, motA, pwm_off)
-        bus.write_i2c_block_data(DEVICE_ADDRESS, motB, pwm_speed)
+        if(dir == 1):
+            bus.write_i2c_block_data(DEVICE_ADDRESS, motA, pwm_speed)
+            bus.write_i2c_block_data(DEVICE_ADDRESS, motB, pwm_off)
+        else:
+            bus.write_i2c_block_data(DEVICE_ADDRESS, motA, pwm_off)
+            bus.write_i2c_block_data(DEVICE_ADDRESS, motB, pwm_speed)
     
 
 
@@ -67,9 +73,11 @@ def motorcmd(select, speed, dir):
 select = int(sys.argv[1])
 speed = 4096-int(sys.argv[2])
 dir = int(sys.argv[3])
+brake = int(sys.argv[4])
 print("select: " + str(select))
-print("speed: " + str(speed))
+print("speed: " + str(4096-speed))
 print("direction: " + str(dir))
-motorcmd(select, speed, dir)
+print("brakes: " + str(brake))
+motorcmd(select, speed, dir, brake)
 
 
