@@ -2,6 +2,7 @@ import time
 import cv2
 import numpy as np
 
+start_time = time.time()
 cap = cv2.VideoCapture("0degree.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 print(fps)
@@ -40,6 +41,10 @@ while(True):
 
 			cv2.line(right,(x1,y1),(x2,y2),(0,0,255),2)
 
+		sloper = (y1 - y2) / ((x2 - x1) + 0.0000001)
+		print('sloper: ')
+		print(str(sloper))
+
 	if linesl != None:
 		# print(linesl)
 		for rho,theta in linesl[0]:
@@ -54,19 +59,25 @@ while(True):
 			y2 = int(y0 - 1000*(a))
 
 			cv2.line(left,(x1,y1),(x2,y2),(0,0,255),2)
+
+		slopel = (y1 - y2) / ((x2 - x1) + 0.0000001)
+		print('slopel: ')
+		print(str(slopel))
+
 		
-	cv2.imshow('cannyl',edgesl)
-	cv2.imshow('cannyr',edgesr)
+	#cv2.imshow('cannyl',edgesl)
+	#cv2.imshow('cannyr',edgesr)
 	cv2.imshow('left', left)
 	cv2.imshow('right', right)
 
+	print(" %s " %(time.time() - start_time))
 
 	# show the frame
-	cv2.imshow("Frame", frame)
+	#cv2.imshow("Frame", frame)
 	key = cv2.waitKey(1) & 0xFF
 
 	# clear the stream in preparation for the next frame
-	rawCapture.truncate(0)
+	# rawCapture.truncate(0)
 
 	#if the `q` key was pressed, break from the loop
 	if key == ord("q"):
