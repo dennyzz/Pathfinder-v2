@@ -6,10 +6,6 @@
 #   pip install those files
 
 
-
-
-
-
 import time
 import cv2
 import numpy as np
@@ -17,12 +13,33 @@ import os
 import scipy.signal
 import sys
 
-# assume that we have proper inputs for our application
-def eigenvalue(input, filter):
-    output = np.empty()
+'''least square qbezier fit using penrose pseudoinverse
+    >>> V=array
+    >>> E,  W,  N,  S =  V((1,0)), V((-1,0)), V((0,1)), V((0,-1))
+    >>> cw = 100
+    >>> ch = 300
+    >>> cpb = V((0, 0))
+    >>> cpe = V((cw, 0))
+    >>> xys=[cpb,cpb+ch*N+E*cw/8,cpe+ch*N+E*cw/8, cpe]            
+    >>> 
+    >>> ts = V(range(11))/10
+    >>> M = bezierM (ts)
+    >>> points = M*xys #produces the points on the bezier curve at t in ts
+    >>> 
+    >>> control_points=lsqfit(points, M)
+    >>> linalg.norm(control_points-xys)<10e-5
+    True
+    >>> control_points.tolist()[1]
+    [12.500000000000037, 300.00000000000017]
 
-
-    return output
+'''
+from numpy import array, linalg, matrix
+from scipy.misc import comb as nOk
+Mtk = lambda n, t, k: t**(k)*(1-t)**(n-k)*nOk(n,k)
+bezierM = lambda ts: matrix([[Mtk(3,t,k) for k in range(4)] for t in ts])
+def lsqfit(points,M):
+    M_ = linalg.pinv(M)
+    return M_ * points
 
 
 # cap = cv2.VideoCapture("footage/radius2angle75.mp4")
@@ -31,13 +48,14 @@ cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
 # fps = cap.get(cv2.CAP_PROP_FPS)
 
 # print(fps)
-w = 1/600
-b = -1/600
+w = 1/200
+b = -1/200
 smooth_time = 0
 # block_5_left = np.array([[b,b,b,b,b], [b,b,b,b,w], [b,b,b,w,w], [b,b,w,w,w], [b,w,w,w,w]])
 # block_5_right = np.array([[b,b,b,b,b], [w,b,b,b,b], [w,w,b,b,b], [w,w,w,b,b], [w,w,w,w,b]])
 
 block_15_left = np.array([
+[b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
 [b,b,b,b,b,b,b,b,b,b,b,b,b,b,w],
 [b,b,b,b,b,b,b,b,b,b,b,b,b,w,w],
 [b,b,b,b,b,b,b,b,b,b,b,b,w,w,w],
@@ -51,10 +69,10 @@ block_15_left = np.array([
 [b,b,b,b,w,w,w,w,w,w,w,w,w,w,w],
 [b,b,b,w,w,w,w,w,w,w,w,w,w,w,w],
 [b,b,w,w,w,w,w,w,w,w,w,w,w,w,w],
-[b,w,w,w,w,w,w,w,w,w,w,w,w,w,w],
-[w,w,w,w,w,w,w,w,w,w,w,w,w,w,w]
+[b,w,w,w,w,w,w,w,w,w,w,w,w,w,w]
 ])
 block_15_right = np.array([
+[b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
 [w,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
 [w,w,b,b,b,b,b,b,b,b,b,b,b,b,b],
 [w,w,w,b,b,b,b,b,b,b,b,b,b,b,b],
@@ -68,8 +86,41 @@ block_15_right = np.array([
 [w,w,w,w,w,w,w,w,w,w,w,b,b,b,b],
 [w,w,w,w,w,w,w,w,w,w,w,w,b,b,b],
 [w,w,w,w,w,w,w,w,w,w,w,w,w,b,b],
+[w,w,w,w,w,w,w,w,w,w,w,w,w,w,b]
+])
+block_15_left_flip = np.array([
+[b,w,w,w,w,w,w,w,w,w,w,w,w,w,w],
+[b,b,w,w,w,w,w,w,w,w,w,w,w,w,w],
+[b,b,b,w,w,w,w,w,w,w,w,w,w,w,w],
+[b,b,b,b,w,w,w,w,w,w,w,w,w,w,w],
+[b,b,b,b,b,w,w,w,w,w,w,w,w,w,w],
+[b,b,b,b,b,b,w,w,w,w,w,w,w,w,w],
+[b,b,b,b,b,b,b,w,w,w,w,w,w,w,w],
+[b,b,b,b,b,b,b,b,w,w,w,w,w,w,w],
+[b,b,b,b,b,b,b,b,b,w,w,w,w,w,w],
+[b,b,b,b,b,b,b,b,b,b,w,w,w,w,w],
+[b,b,b,b,b,b,b,b,b,b,b,w,w,w,w],
+[b,b,b,b,b,b,b,b,b,b,b,b,w,w,w],
+[b,b,b,b,b,b,b,b,b,b,b,b,b,w,w],
+[b,b,b,b,b,b,b,b,b,b,b,b,b,b,w],
+[b,b,b,b,b,b,b,b,b,b,b,b,b,b,b]
+])
+block_15_right_flip = np.array([
 [w,w,w,w,w,w,w,w,w,w,w,w,w,w,b],
-[w,w,w,w,w,w,w,w,w,w,w,w,w,w,w]
+[w,w,w,w,w,w,w,w,w,w,w,w,w,b,b],
+[w,w,w,w,w,w,w,w,w,w,w,w,b,b,b],
+[w,w,w,w,w,w,w,w,w,w,w,b,b,b,b],
+[w,w,w,w,w,w,w,w,w,w,b,b,b,b,b],
+[w,w,w,w,w,w,w,w,w,b,b,b,b,b,b],
+[w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
+[w,w,w,w,w,w,w,b,b,b,b,b,b,b,b],
+[w,w,w,w,w,w,b,b,b,b,b,b,b,b,b],
+[w,w,w,w,w,b,b,b,b,b,b,b,b,b,b],
+[w,w,w,w,b,b,b,b,b,b,b,b,b,b,b],
+[w,w,w,b,b,b,b,b,b,b,b,b,b,b,b],
+[w,w,b,b,b,b,b,b,b,b,b,b,b,b,b],
+[w,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
+[b,b,b,b,b,b,b,b,b,b,b,b,b,b,b]
 ])
 
 # block_15_right = np.array([
@@ -91,63 +142,26 @@ block_15_right = np.array([
 # ])
 
 
-# block_20_right = np.array([
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,b,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,b,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,b,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,w,b,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,w,w,w,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,b,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,b,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,b,b],
-# [w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,b]
-# ])
-
-# block_20_left = np.array([
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,w],
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,w,w],
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,w,w,w],
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,w,w,w,w],
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b,w,w,w,w,w],
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,b,w,w,w,w,w,w],
-# [b,b,b,b,b,b,b,b,b,b,b,b,b,w,w,w,w,w,w,w],
-# [b,b,b,b,b,b,b,b,b,b,b,b,w,w,w,w,w,w,w,w],
-# [b,b,b,b,b,b,b,b,b,b,b,w,w,w,w,w,w,w,w,w],
-# [b,b,b,b,b,b,b,b,b,b,w,w,w,w,w,w,w,w,w,w],
-# [b,b,b,b,b,b,b,b,b,w,w,w,w,w,w,w,w,w,w,w],
-# [b,b,b,b,b,b,b,b,w,w,w,w,w,w,w,w,w,w,w,w],
-# [b,b,b,b,b,b,b,w,w,w,w,w,w,w,w,w,w,w,w,w],
-# [b,b,b,b,b,b,w,w,w,w,w,w,w,w,w,w,w,w,w,w],
-# [b,b,b,b,b,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w],
-# [b,b,b,b,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w],
-# [b,b,b,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w],
-# [b,b,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w],
-# [b,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w,w]
-# ])
-
 block_left = block_15_left
-block_right = block_15_right
+block_right = block_15_right 
+block_left_flip = block_15_left_flip
+block_right_flip = block_15_right_flip
 blocksize = 15
-halfblock = int(floor(blocksize/2))
-algotype = "correlation"
+halfblock = int(np.floor(blocksize/2))
 
 f = open('workfile.txt', 'w')
 print(f)
 scanwidth = 300
+scanwidthmin = 100
 scanheight = 15
-scanspacing = 30
+scanspacing = 15
+threshold = 2
+green = (0,255,0)
+red = (0,0,255)
+blue = (255,0,0)
+yellow = (0,255,255)
+
+
 while cap:
     ret, frame = cap.read()
     ysize = frame.shape[0]
@@ -160,8 +174,8 @@ while cap:
     R_index = [xsize-300, ysize-150]
 
     # reset some parameters
-    leftblob = np.empty((20*15, 300))
-    rightblob = np.empty((20*15, 300))
+    leftblob = np.empty((50*15, 286))
+    rightblob = np.empty((50*15, 286))
     scanwidthl = scanwidth
     scanwidthr = scanwidth
 
@@ -170,7 +184,7 @@ while cap:
 
 ####### main process loop
     # for loop controls how many blocks vertically are checked
-    for x in range(0,10):
+    for x in range(0,50):
 
         # step3: grab the proper block of pixels for the current scan block
         leftscan = gray[L_index[1]:L_index[1]+scanheight , L_index[0]:L_index[0] + scanwidthl]
@@ -178,60 +192,22 @@ while cap:
                 # cv2.imshow("left", leftscan)
         # cv2.imshow("right", rightscan)
 
-        if algotype == "convolution":
-            # step4: run the correlation/eigenvalue/convolution thing
-            left = scipy.ndimage.convolve(leftscan, block_left)
-            right = scipy.ndimage.convolve(rightscan, block_right)
+        # step4: run the correlation/eigenvalue/convolution thing
+        left = scipy.signal.correlate2d(leftscan, block_left, mode='valid')[0]
+        right = scipy.signal.correlate2d(rightscan, block_right, mode='valid')[0]
 
-            # post process into a single intensity vector
-            left = left[7][int(np.floor(blocksize/2)):int(scanwidthl-np.floor(blocksize/2))]
-            right = right[7][int(np.floor(blocksize/2)):int(scanwidthr-np.floor(blocksize/2))]
+        # step 4.5 if it returns nothing of adequate similarity, try the reversed masks
+        if max(left) < threshold:
+            left = scipy.signal.correlate2d(leftscan, block_left_flip, mode='valid')[0]        
+        if max(right) < threshold:
+            right = scipy.signal.correlate2d(rightscan, block_right_flip, mode='valid')[0]
 
-            # copy for visualization
-            np.copyto(leftblob[x*15:x*15+15, 0:left.shape[0]], left)
-            np.copyto(rightblob[x*15:x*15+15, 0:right.shape[0]], right)
+        # f.write('leftmax:' + str(np.max(left)) + ' ' + str(np.min(left)) + '\n')
+        # f.write('rightmax:' + str(np.max(right)) + ' ' + str(np.min(right)) + '\n')
+        # copy for visualization
+        np.copyto(leftblob[x*15:x*15+15, 0:left.shape[0]], left)
+        np.copyto(rightblob[x*15:x*15+15, 0:right.shape[0]], right)
 
-        elif algotype == "correlation":
-            # step4: run the correlation/eigenvalue/convolution thing
-            left = scipy.ndimage.correlate(leftscan, block_left)
-            right = scipy.ndimage.correlate(rightscan, block_right)
-
-            # post process into a single intensity vector
-            left = left[7][int(np.floor(blocksize/2)):int(scanwidthl-np.floor(blocksize/2))]
-            right = right[7][int(np.floor(blocksize/2)):int(scanwidthr-np.floor(blocksize/2))]
-
-            # copy for visualization
-            np.copyto(leftblob[x*15:x*15+15, 0:left.shape[0]], left)
-            np.copyto(rightblob[x*15:x*15+15, 0:right.shape[0]], right)
-
-        elif algotype == "eigenvalue":
-            # step4: run the correlation/eigenvalue/convolution thing
-            left = scipy.ndimage.correlate(leftscan, block_left)
-            right = scipy.ndimage.correlate(rightscan, block_right)
-
-            # post process into a single intensity vector
-            left = left[7][int(np.floor(blocksize/2)):int(scanwidthl-np.floor(blocksize/2))]
-            right = right[7][int(np.floor(blocksize/2)):int(scanwidthr-np.floor(blocksize/2))]
-
-            # copy for visualization
-            np.copyto(leftblob[x*15:x*15+15, 0:left.shape[0]], left)
-            np.copyto(rightblob[x*15:x*15+15, 0:right.shape[0]], right)
-
-        else: 
-            print("NO ALGORITHM TYPE DEFINED")
-            exit(1)
-
-
-
-        # print(left) 
-        # print(right)
-        # print(left)
-        # idx = np.argmax(left)
-        # print("")
-        # print(idx)
-        # print(left[idx%500, int(idx/500)])
-        # find the maximum and draw a rectangle!
-        # try:
         # so idxL/R is the index of the max thing, or the best boundary location as an x offset from the scan box width
         # idxLRf is the location of the box in the frame
         # L_index and R_index are the top left point of the scan box.
@@ -241,55 +217,45 @@ while cap:
             # thus the index is the center of each block, which means within each scan block, the center of the max block is (idxl+7, 7)
             idxl = np.argmax(left)
             idxr = np.argmax(right)
-            # print("left max:"+str(idxl))
-            # print("right max:"+str(idxr))
-            green = (0,255,0)
-            red = (0,0,255)
-            blue = (255,0,0)
-            rect = 15
-            # cv2.rectangle(right, (idxr, 0), (idxr + rect, rect), 255)
-            # cv2.rectangle(left, (idxl, 0), (idxl + rect, rect), 255)
 
             # idxl-f stands for the index in the actual frame, this converts our idxl location to the correct pixel location on the full input
-            idxlf = (halfblock + idxl + L_index[0], L_index[1])
-            idxrf = (halfblock + idxr + R_index[0] , R_index[1])
+            idxlf = (halfblock + idxl + L_index[0], L_index[1] + halfblock)
+            idxrf = (halfblock + idxr + R_index[0] , R_index[1] + halfblock)
             # print("left at frame loc:"+str(idxlf))
             # print("right at frame loc:"+str(idxrf))
             
             # draw the green scan box, and the red/blue locators
-            cv2.rectangle(frame, tuple(L_index), (L_index[0] + scanwidthl, L_index[1] + scanheight), green, 2)
-            cv2.rectangle(frame, tuple(R_index), (R_index[0] + scanwidthr, R_index[1] + scanheight), green, 2)
-            cv2.rectangle(frame, idxlf, (idxlf[0] + rect, idxlf[1] + rect), red, 3)
-            cv2.rectangle(frame, idxrf, (idxrf[0] + rect, idxrf[1] + rect), blue, 3)
+            cv2.rectangle(frame, tuple(L_index), (L_index[0] + scanwidthl, L_index[1] + scanheight-1), green, 2)
+            cv2.rectangle(frame, tuple(R_index), (R_index[0] + scanwidthr, R_index[1] + scanheight-1), green, 2)
+
             # move the bounding box to next position by scanspacing pixels
-            if left[idxl] < 10:
-                scanwidthl = 300
+            if left[idxl] < threshold:
+                if scanwidthl == scanwidthmin: # if from good to failing
+                    L_index[0] = int(L_index[0] - ((scanwidth - scanwidthmin) / 2))
+                cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), yellow, 2)
+                scanwidthl = scanwidth
                 # print("left poop")
                 L_index = [L_index[0], L_index[1] - scanspacing]
             else:
-                scanwidthl = 100
-                L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1]-scanspacing]
+                cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), red, 2)
+                scanwidthl = scanwidthmin
+                L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1] - halfblock - scanspacing]
 
-            if right[idxr] < 10:
-                scanwidthr = 300
+            if right[idxr] < threshold:
+                cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 2)
+                scanwidthr = scanwidth
                 # print("right poop")
-                R_index = [R_index[0], R_index[1]-scanspacing]
+                R_index = [R_index[0], R_index[1] - scanspacing]    
             else:        
-                scanwidthr = 100
-                R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1]-scanspacing]
+                cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), blue, 2)
+                scanwidthr = scanwidthmin
+                R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1] - halfblock - scanspacing]
 
-            # R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1]-15]
-            # L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1]-15]
             if L_index[0] < 0:
                 L_index[0] = 0
             if R_index[0] > xsize-scanwidthr:
                 R_index[0] = xsize-scanwidthr
-        # except: 
-            # print("failed to find line")
-            # L_index = (idxlf[0], idxlf[1]+15)
-            # R_index = (idxrf[0], idxrf[1]+15)
-        # print(start.size)
-        # print(left.size)
+
     ####### end processing
     proc_time = time.time() - start_time
     if smooth_time == 0:
@@ -297,14 +263,18 @@ while cap:
     else:
         smooth_time = 0.95*smooth_time + 0.05*proc_time
     fps_calc = int(1/smooth_time) 
-    # print(smooth_time, "\r") 
     sys.stdout.write("\rtime: %f, frames: %d               " % (smooth_time, fps_calc))
     sys.stdout.flush()
     #time it from here
 
+    leftblob = np.multiply(leftblob, 0.1)
+    rightblob = np.multiply(rightblob, 0.1)
+
     cv2.imshow('frame', frame)
     cv2.imshow('left', leftblob)
     cv2.imshow('right', rightblob)
+    # cv2.imshow('left', leftshow)
+    # cv2.imshow('right', rightshow)
 
     # show the frame
     #cv2.imshow("Frame", frame)
