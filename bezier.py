@@ -62,9 +62,9 @@ def lsqfit(points,M):
     return M_ * points
 
 
-cap = cv2.VideoCapture("footage/radius2angle75.mp4")
+# cap = cv2.VideoCapture("footage/radius2angle75.mp4")
 # cap = cv2.VideoCapture("footage/0degree.mp4 ")
-# cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
+cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
 # fps = cap.get(cv2.CAP_PROP_FPS)
 
 # print(fps)
@@ -200,8 +200,8 @@ while cap:
     R_index = [xsize-300, ysize-150]
 
     # reset some parameters
-    leftblob = np.empty((50*15, 286))
-    rightblob = np.empty((50*15, 286))
+    leftblob = np.empty((scanlines*15, 286))
+    rightblob = np.empty((scanlines*15, 286))
     scanwidthl = scanwidth
     scanwidthr = scanwidth
     laneleftcount = 0
@@ -269,9 +269,11 @@ while cap:
                 laneleft[laneleftcount] = idxlf
                 laneleftcount += 1
                 cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), red, 2)
+                grayblock = gray[(idxlf[1]-halfblock):(idxlf[1]+halfblock+1), (idxlf[0]-halfblock):(idxlf[0]+halfblock+1)]
+                # gray[(idxlf[1]-halfblock):(idxlf[1]+halfblock+1), (idxlf[0]-halfblock):(idxlf[0]+halfblock+1)] = cv2.adaptiveThreshold(grayblock, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, blocksize, 0)
+                ret, gray[(idxlf[1]-halfblock):(idxlf[1]+halfblock+1), (idxlf[0]-halfblock):(idxlf[0]+halfblock+1)] = cv2.threshold(grayblock, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
                 scanwidthl = scanwidthmin
                 L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1] - halfblock - scanspacing]
-
             if right[idxr] < threshold:
                 cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 2)
                 scanwidthr = scanwidth
@@ -281,6 +283,9 @@ while cap:
                 laneright[lanerightcount] = idxrf
                 lanerightcount += 1
                 cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), blue, 2)
+                grayblock = gray[(idxrf[1]-halfblock):(idxrf[1]+halfblock+1), (idxrf[0]-halfblock):(idxrf[0]+halfblock+1)]
+                # gray[(idxrf[1]-halfblock):(idxrf[1]+halfblock+1), (idxrf[0]-halfblock):(idxrf[0]+halfblock+1)] = cv2.adaptiveThreshold(grayblock, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, blocksize, 0)
+                ret, gray[(idxrf[1]-halfblock):(idxrf[1]+halfblock+1), (idxrf[0]-halfblock):(idxrf[0]+halfblock+1)] = cv2.threshold(grayblock, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
                 scanwidthr = scanwidthmin
                 R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1] - halfblock - scanspacing]
 
@@ -300,6 +305,9 @@ while cap:
     sys.stdout.flush()
     #time it from here
 
+
+
+    #reconstruct line segments?
     leftblob = np.multiply(leftblob, 0.1)
     rightblob = np.multiply(rightblob, 0.1)
 
@@ -330,7 +338,7 @@ while cap:
             print ("right side: No single intersection point detected")
 
 
-    cv2.imshow('frame', frame)
+    cv2.imshow('frame', gray)
     cv2.imshow('left', leftblob)
     cv2.imshow('right', rightblob)
 
