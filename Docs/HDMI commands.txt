@@ -1,0 +1,7 @@
+Edit /etc/rc.local and add the following lines above exit 0:
+
+# Disable HDMI
+/usr/bin/tvservice -o
+
+# Enable HDMI
+/usr/bin/tvservice -p

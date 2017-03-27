@@ -1,0 +1,17 @@
+Python alternatives,
+our code depends on python 3.4
+
+When running the installopencv.bash script we want to be using python 2.7
+
+check python version with 
+# python --version
+
+Add alternatives with 
+# sudo update-alternatives --install /usr/bin/python python /usr/bin/python2.7 1
+# sudo update-alternatives --install /usr/bin/python python /usr/bin/python3.4 2
+
+Swap alternatives with 
+# update-alternatives --config python
+
+And to remove alternatives use
+# update-alternatives --remove python /usr/bin/python2.7
