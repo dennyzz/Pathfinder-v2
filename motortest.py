@@ -6,6 +6,13 @@
 import smbus
 import sys
 
+
+# Usage: 
+# Select is motor 1 or 2 , none other are implemented
+# Speed is a value from 0 to 4096 corresponding to 0 to full scale pwm
+# dir is the direction of rotation, the motors will need to be opposites to move forwards
+# brake is if 1 then brake, and ignore all else
+
 def motorcmd(select, speed, dir, brake):
     # motor select 1 and 2 are M1 M2 channels
     bus = smbus.SMBus(1)    # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
