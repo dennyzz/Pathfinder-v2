@@ -6,6 +6,10 @@
 #   pip install those files
 
 
+
+#import the necessary packages
+from picamera import PiCamera
+from picamera.array import PiRGBArray
 import time
 import cv2
 import numpy as np
@@ -66,11 +70,40 @@ cap = cv2.VideoCapture("footage/radius2angle75.mp4")
 # fps = cap.get(cv2.CAP_PROP_FPS)
 
 # print(fps)
-w = 1/200
-b = -1/200
+w = 1/20
+b = -1/20
 smooth_time = 0
-# block_5_left = np.array([[b,b,b,b,b], [b,b,b,b,w], [b,b,b,w,w], [b,b,w,w,w], [b,w,w,w,w]])
-# block_5_right = np.array([[b,b,b,b,b], [w,b,b,b,b], [w,w,b,b,b], [w,w,w,b,b], [w,w,w,w,b]])
+block_5_left = np.array([
+[b,b,b,b,b],
+[b,b,b,b,w], 
+[b,b,b,w,w], 
+[b,b,w,w,w], 
+[b,w,w,w,w]
+])
+
+block_5_right = np.array([
+[b,b,b,b,b], 
+[w,b,b,b,b], 
+[w,w,b,b,b], 
+[w,w,w,b,b], 
+[w,w,w,w,b]
+])
+
+block_5_left_flip = np.array([
+[b,w,w,w,w],
+[b,b,w,w,w], 
+[b,b,b,w,w], 
+[b,b,b,b,w], 
+[b,b,b,b,b]
+])
+
+block_5_right_flip = np.array([
+[w,w,w,w,b],
+[w,w,w,b,b], 
+[w,w,b,b,b], 
+[w,b,b,b,b], 
+[b,b,b,b,b] 
+])
 
 block_15_left = np.array([
 [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
@@ -159,21 +192,22 @@ block_15_right_flip = np.array([
 # [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b]
 # ])
 
+ 
 
-block_left = block_15_left
-block_right = block_15_right 
-block_left_flip = block_15_left_flip
-block_right_flip = block_15_right_flip
+block_left = block_5_left
+block_right = block_5_right 
+block_left_flip = block_5_left_flip
+block_right_flip = block_5_right_flip
 blocksize = 15
 halfblock = int(np.floor(blocksize/2))
 
-f = open('workfile.txt', 'w')
+# f = open('workfile.txt', 'w')
 print(f)
-scanwidth = 300
-scanwidthmin = 100
-scanheight = 15
-scanspacing = 15
-scanlines = 30
+scanwidth = 75
+scanwidthmin = 30
+scanheight = 5
+scanspacing = 5
+scanlines = 20
 threshold = 1
 green = (0,255,0)
 red = (0,0,255)
@@ -186,8 +220,19 @@ laneleftcount = 0
 lanerightcount = 0
 
 
-while cap:
-    ret, frame = cap.read()
+# # initialize the camera and grab a reference to the raw camera capture
+camera = PiCamera()
+camera.resolution = (320, 240)
+camera.framerate = 30
+rawCapture = PiRGBArray(camera, size=(320, 240))
+ 
+# # allow the camera to warmup
+time.sleep(0.1)
+# capture frames from the camera
+for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+    # grab the raw NumPy array representing the image,
+
+    frame = frame.array
     ysize = frame.shape[0]
     xsize = frame.shape[1]
     # step1: grayscale

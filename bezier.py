@@ -4,6 +4,8 @@
 #   then go to http://www.lfd.uci.edu/~gohlke/pythonlibs/#scipy
 #   and download numpy+mkl and scipy
 #   pip install those files
+# for linux! 
+# try sudo apt-get install python3-scipy python3-numpy
 
 
 import time
