@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
 
 from subprocess import *
 from time import sleep, strftime
@@ -321,8 +321,7 @@ def run_cmd(cmd):
 while 1:
         lcd.home()
         ipaddr = run_cmd(cmd)
-        #print datetime.now().strftime('%b %d  %H:%M:%S\n')
-        print ipaddr        
+        #print datetime.now().strftime('%b %d  %H:%M:%S\
         lcd.message(datetime.now().strftime('%b %d  %H:%M:%S\n'))
         lcd.message('IP%15s' % ( ipaddr ) )
         sleep(1)

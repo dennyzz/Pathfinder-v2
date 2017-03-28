@@ -15,12 +15,15 @@ d4 = 12
 d5 = 16
 d6 = 20
 d7 = 21
+v0 = 6
 cols = 8
 lines = 2
 
-lcd = Adafruit_CharLCD(rs, en, d4, d5, d6, d7, cols, lines)
+lcd = Adafruit_CharLCD.Adafruit_CharLCD(rs, en, d4, d5, d6, d7, cols, lines)
 gpio=GPIO.get_platform_gpio()
 gpio.setup(rw, GPIO.OUT)
+gpio.setup(v0, GPIO.OUT)
+gpio.output(v0, False)
 gpio.output(rw, False)
 lcd.clear()
 
@@ -36,7 +39,6 @@ while 1:
         lcd.home()
         ipaddr = run_cmd(cmd)
         ips = string.split(ipaddr, '.')
-        
-        lcd.message('%s.%s     \n' % (ips[0], ips[1]) )
-        lcd.message('%s.%s     \n' % (ips[2], ips[3]) )
+        lcd.message('%s.%s\n' % (ips[0], ips[1]) )
+        lcd.message('%s.%s' % (ips[2], ips[3]) )
         sleep(1)
