@@ -1,6 +1,14 @@
 To make the LCD.py file a service
 
 we need a few files
+all of them should have executable permission
+and most commands need sudo to run
+# chmod 755 file
+also need to install some of the adafruit libraries using
+# sudo pip install 
+Adafruit_CharLCD
+Adafruit_GPIO
+
 
 the Python script
 	$GITREPO$/lcd.py
@@ -58,9 +66,8 @@ exit 0
 Description=LCD ip display on startup
 
 [Service]
-Type=oneshot
+Type=idle
 ExecStart=/etc/init.d/lcd start
-ExecStop=/etc/init.d/lcd stop
 RemainAfterExit=yes
 
 [Install]
