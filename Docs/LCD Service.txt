@@ -1,0 +1,69 @@
+To make the LCD.py file a service
+
+we need a few files
+
+the Python script
+	$GITREPO$/lcd.py
+
+the script file
+	/etc/init.d/lcd
+
+and a service file
+	/etc/systemd/system/lcd.service
+
+When these files are in place run
+# systemctl enable lcd.service
+
+###################### /etc/init.d/lcd ##################
+
+### BEGIN INIT INFO
+# Provides: LCD - date / time / ip address
+# Required-Start: $remote_fs $syslog
+# Required-Stop: $remote_fs $syslog
+# Default-Start: 2 3 4 5
+# Default-Stop: 0 1 6
+# Short-Description: Liquid Crystal Display
+# Description: date / time / ip address
+### END INIT INFO
+ 
+ 
+#! /bin/sh
+# /etc/init.d/lcd
+ 
+ 
+export HOME
+case "$1" in
+    start)
+        echo "Starting LCD"
+        /home/pi/Documents/Git/452-Pathfinder/lcd.py  2>&1 &
+    ;;
+    stop)
+        echo "Stopping LCD"
+	LCD_PID=`ps auxwww | grep lcd.py | head -1 | awk '{print $2}'`
+	kill -9 $LCD_PID
+    ;;
+    *)
+        echo "Usage: /etc/init.d/lcd {start|stop}"
+        exit 1
+    ;;
+esac
+exit 0
+
+########################################################
+
+
+################## lcd.service ###################
+
+[Unit]
+Description=LCD ip display on startup
+
+[Service]
+Type=oneshot
+ExecStart=/etc/init.d/lcd start
+ExecStop=/etc/init.d/lcd stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+
+##################################################
