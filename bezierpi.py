@@ -64,7 +64,7 @@ def lsqfit(points,M):
     return M_ * points
 
 
-cap = cv2.VideoCapture("footage/radius2angle75.mp4")
+# cap = cv2.VideoCapture("footage/radius2angle75.mp4")
 # cap = cv2.VideoCapture("footage/0degree.mp4 ")
 # cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
 # fps = cap.get(cv2.CAP_PROP_FPS)
@@ -198,22 +198,30 @@ block_left = block_5_left
 block_right = block_5_right 
 block_left_flip = block_5_left_flip
 block_right_flip = block_5_right_flip
-blocksize = 15
+blocksize = 5
 halfblock = int(np.floor(blocksize/2))
 
-# f = open('workfile.txt', 'w')
-print(f)
+# width of the initial scan block
 scanwidth = 75
+# width of the scan block when a valid point has been found previously (smaller)
 scanwidthmin = 30
+# height of the scan block
 scanheight = 5
-scanspacing = 5
+# space between scan blocks
+scanspacing = 0
+# total number of scan lines vertically
 scanlines = 20
+# pixels from the bottom that the scanlines first index starts from
+scanstartline = 40
+# the threshold for detection for post correlation
 threshold = 1
+# Colors!
 green = (0,255,0)
 red = (0,0,255)
 blue = (255,0,0)
 yellow = (0,255,255)
 orange = (51, 153, 255)
+# lane points saved into an array with a count variable 
 laneleft = np.empty((scanlines,2), dtype = np.int32)
 laneright= np.empty((scanlines,2), dtype = np.int32)
 laneleftcount = 0
@@ -229,7 +237,7 @@ rawCapture = PiRGBArray(camera, size=(320, 240))
 # # allow the camera to warmup
 time.sleep(0.1)
 # capture frames from the camera
-for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True, resize=(320,240)):
     # grab the raw NumPy array representing the image,
 
     frame = frame.array
@@ -239,12 +247,12 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # step2: define top left corner of starting scan block
-    L_index = [0,ysize-150]
-    R_index = [xsize-300, ysize-150]
+    L_index = [0,ysize - scanstartline]
+    R_index = [xsize - scanwidth, ysize - scanstartline]
 
     # reset some parameters
-    leftblob = np.empty((50*15, 286))
-    rightblob = np.empty((50*15, 286))
+    leftblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
+    rightblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
     scanwidthl = scanwidth
     scanwidthr = scanwidth
     laneleftcount = 0
@@ -296,10 +304,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             # print("right at frame loc:"+str(idxrf))
             
             # draw the green scan box, and the red/blue locators
-            cv2.rectangle(frame, tuple(L_index), (L_index[0] + scanwidthl, L_index[1] + scanheight-1), green, 2)
-            cv2.rectangle(frame, tuple(R_index), (R_index[0] + scanwidthr, R_index[1] + scanheight-1), green, 2)
+            cv2.rectangle(frame, tuple(L_index), (L_index[0] + scanwidthl, L_index[1] + scanheight-1), green, 1)
+            cv2.rectangle(frame, tuple(R_index), (R_index[0] + scanwidthr, R_index[1] + scanheight-1), green, 1)
 
-            # move the bounding box to next position by scanspacing pixels
+            # move the bounding box to next position by scanheight + scanspacing pixels
             if left[idxl] < threshold:
                 # if cannot find lane line
                 if scanwidthl == scanwidthmin: # if from good to failing
@@ -307,25 +315,25 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                 cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), yellow, 2)
                 scanwidthl = scanwidth
                 # print("left BAD")
-                L_index = [L_index[0], L_index[1] - scanspacing]
+                L_index = [L_index[0], L_index[1] - scanspacing - scanheight]
             else:
                 laneleft[laneleftcount] = idxlf
                 laneleftcount += 1
-                cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), red, 2)
+                cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), red, 1)
                 scanwidthl = scanwidthmin
-                L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1] - halfblock - scanspacing]
+                L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1] - halfblock - scanspacing - scanheight]
 
             if right[idxr] < threshold:
-                cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 2)
+                cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 1)
                 scanwidthr = scanwidth
                 # print("right BAD")
-                R_index = [R_index[0], R_index[1] - scanspacing]    
+                R_index = [R_index[0], R_index[1] - scanspacing - scanheight]    
             else:
                 laneright[lanerightcount] = idxrf
                 lanerightcount += 1
-                cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), blue, 2)
+                cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), blue, 1)
                 scanwidthr = scanwidthmin
-                R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1] - halfblock - scanspacing]
+                R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1] - halfblock - scanspacing - scanheight]
 
             if L_index[0] < 0:
                 L_index[0] = 0
@@ -353,11 +361,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         R = intersection(L1, L2)
         if R:
             R = (int(R[0]), int(R[1]))
-            cv2.line(frame, (laneleft[0][0], laneleft[0][1]), R, orange, 2)
-            cv2.line(frame, (laneleft[laneleftcount-1][0], laneleft[laneleftcount-1][1]), R, orange, 2)
+            cv2.line(frame, (laneleft[0][0], laneleft[0][1]), R, orange, 1)
+            cv2.line(frame, (laneleft[laneleftcount-1][0], laneleft[laneleftcount-1][1]), R, orange, 1)
             # print ("Intersection detected:", R)
-        else:
-            print ("leftside: No single intersection point detected")
+        #else:
+            # print ("leftside: No single intersection point detected")
 
     if(lanerightcount > 4):
         L1 = line(laneright[0], laneright[1])
@@ -366,11 +374,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         R = intersection(L1, L2)
         if R:
             R = (int(R[0]), int(R[1]))
-            cv2.line(frame, (laneright[0][0], laneright[0][1]), R, orange, 2)
-            cv2.line(frame, (laneright[lanerightcount-1][0], laneright[lanerightcount-1][1]), R, orange, 2)
+            cv2.line(frame, (laneright[0][0], laneright[0][1]), R, orange, 1)
+            cv2.line(frame, (laneright[lanerightcount-1][0], laneright[lanerightcount-1][1]), R, orange, 1)
             # print ("Intersection detected:", R)
-        else:
-            print ("right side: No single intersection point detected")
+        #else:
+            # print ("right side: No single intersection point detected")
 
 
     cv2.imshow('frame', frame)
@@ -389,7 +397,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     key = cv2.waitKey(1) & 0xFF
 
     # clear the stream in preparation for the next frame
-    # rawCapture.truncate(0)
+    rawCapture.truncate(0)
 
     #if the `q` key was pressed, break from the loop
     if key == ord("n"):
