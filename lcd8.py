@@ -41,7 +41,7 @@ while True:
         ips = string.split(ipaddr, '.')
         if len(ips) == 4:
                 lcd.message('i%s.%s\n' % (ips[0], ips[1]) )
-                lcd.message('p%s.%s' % (ips[2], ips[3]) )
+                lcd.message('p%s.%s\n' % (ips[2], ips[3]) )
         else:
                 lcd.message('   no   \n')
                 lcd.message('network!')
