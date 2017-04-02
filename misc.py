@@ -4,7 +4,7 @@ from picamera import PiCamera
 import time
 import cv2
 import numpy as np
-import motortest
+import motorshield
 import VL53L0X
 
 # # initialize the camera and grab a reference to the raw camera capture
