@@ -20,7 +20,7 @@ def motorservocmd1(Aspeed, Adir, Abrake, Bspeed, Bdir, Bbrake, Servo1, Servo2):
     CTRLB = 0
     if Adir:
         CTRLA |= 1<<0
-     if Bdir:
+    if Bdir:
         CTRLB |= 1<<0
     if Abrake:
         CTRLA |= 1<<1
@@ -47,7 +47,7 @@ def motorservocmd2(Aspeed, Adir, Abrake, Bspeed, Bdir, Bbrake):
     CTRLB = 0
     if Adir:
         CTRLA |= 1<<0
-     if Bdir:
+    if Bdir:
         CTRLB |= 1<<0
     if Abrake:
         CTRLA |= 1<<1
@@ -77,7 +77,7 @@ def motorservocmd3(Aspeed, Adir, Abrake, Servo1):
     assert Aspeed < 256 & Aspeed >=0
     assert Servo1 < 256 & Servo1 >=0
 
-    cmd = {CTRLA, Aspeed, Servo1}
+    cmd = [CTRLA, Aspeed, Servo1]
 
     bus.write_i2c_block_data(DEVICE_ADDRESS, MOTOR_CMD_3, cmd)
 
@@ -93,10 +93,10 @@ def motorservocmd4(Bspeed, Bdir, Bbrake, Servo2):
     if Bbrake:
         CTRLB |= 1<<1
 
-    assert Bspeed < 256 & Bspeed >=0
-    assert Servo2 < 256 & Servo2 >=0
+    #assert (Bspeed < 256 & Bspeed >=0)
+    #assert (Servo2 < 256 & Servo2 >=0)
 
-    cmd = {CTRLB, Bspeed, Servo2}
+    cmd = [CTRLB, Bspeed, Servo2]
 
     bus.write_i2c_block_data(DEVICE_ADDRESS, MOTOR_CMD_4, cmd)
 

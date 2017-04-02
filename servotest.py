@@ -1,4 +1,5 @@
 import pathfindershield
+import sys
 
 # def motorservocmd4(Bspeed, Bdir, Bbrake, Servo2):
 
@@ -9,8 +10,8 @@ angle = int(sys.argv[4])
 print("speed: " + str(speed))
 print("direction: " + str(dir))
 print("brakes: " + str(brake))
-print("angle" + str(angle))
+print("angle: " + str(angle))
 
-motorservocmd4(speed, dir, brake, angle)
+pathfindershield.motorservocmd4(speed, dir, brake, angle)
 
 
