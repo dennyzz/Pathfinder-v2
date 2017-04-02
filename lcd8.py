@@ -40,8 +40,12 @@ while True:
         ipaddr = run_cmd(cmd)
         ips = string.split(ipaddr, '.')
         if len(ips) == 4:
-                lcd.message('i%s.%s\n' % (ips[0], ips[1]) )
-                lcd.message('p%s.%s\n' % (ips[2], ips[3]) )
+                ip1 = '%s.%s' % (ips[0], ips[1]) 
+                ip2 = '%s.%s' % (ips[2], ips[3].rstrip())
+                ip1 = 'i%7s\n' % (ip1)
+                ip2 = 'p%7s\n' % (ip2)
+                lcd.message(ip1)
+                lcd.message(ip2)
         else:
                 lcd.message('   no   \n')
                 lcd.message('network!')
