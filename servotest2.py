@@ -20,5 +20,5 @@ while True:
         pathfindershield.motorservocmd4(speed, dir, brake, angle)
         print(angle)
     
-    time.sleep(.005)
+    time.sleep(.001)
     angle += 1

@@ -104,94 +104,6 @@ block_5_right_flip = np.array([
 [w,b,b,b,b], 
 [b,b,b,b,b] 
 ])
-
-block_15_left = np.array([
-[b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-[b,b,b,b,b,b,b,b,b,b,b,b,b,b,w],
-[b,b,b,b,b,b,b,b,b,b,b,b,b,w,w],
-[b,b,b,b,b,b,b,b,b,b,b,b,w,w,w],
-[b,b,b,b,b,b,b,b,b,b,b,w,w,w,w],
-[b,b,b,b,b,b,b,b,b,b,w,w,w,w,w],
-[b,b,b,b,b,b,b,b,b,w,w,w,w,w,w],
-[b,b,b,b,b,b,b,b,w,w,w,w,w,w,w],
-[b,b,b,b,b,b,b,w,w,w,w,w,w,w,w],
-[b,b,b,b,b,b,w,w,w,w,w,w,w,w,w],
-[b,b,b,b,b,w,w,w,w,w,w,w,w,w,w],
-[b,b,b,b,w,w,w,w,w,w,w,w,w,w,w],
-[b,b,b,w,w,w,w,w,w,w,w,w,w,w,w],
-[b,b,w,w,w,w,w,w,w,w,w,w,w,w,w],
-[b,w,w,w,w,w,w,w,w,w,w,w,w,w,w]
-])
-block_15_right = np.array([
-[b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-[w,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-[w,w,b,b,b,b,b,b,b,b,b,b,b,b,b],
-[w,w,w,b,b,b,b,b,b,b,b,b,b,b,b],
-[w,w,w,w,b,b,b,b,b,b,b,b,b,b,b],
-[w,w,w,w,w,b,b,b,b,b,b,b,b,b,b],
-[w,w,w,w,w,w,b,b,b,b,b,b,b,b,b],
-[w,w,w,w,w,w,w,b,b,b,b,b,b,b,b],
-[w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-[w,w,w,w,w,w,w,w,w,b,b,b,b,b,b],
-[w,w,w,w,w,w,w,w,w,w,b,b,b,b,b],
-[w,w,w,w,w,w,w,w,w,w,w,b,b,b,b],
-[w,w,w,w,w,w,w,w,w,w,w,w,b,b,b],
-[w,w,w,w,w,w,w,w,w,w,w,w,w,b,b],
-[w,w,w,w,w,w,w,w,w,w,w,w,w,w,b]
-])
-block_15_left_flip = np.array([
-[b,w,w,w,w,w,w,w,w,w,w,w,w,w,w],
-[b,b,w,w,w,w,w,w,w,w,w,w,w,w,w],
-[b,b,b,w,w,w,w,w,w,w,w,w,w,w,w],
-[b,b,b,b,w,w,w,w,w,w,w,w,w,w,w],
-[b,b,b,b,b,w,w,w,w,w,w,w,w,w,w],
-[b,b,b,b,b,b,w,w,w,w,w,w,w,w,w],
-[b,b,b,b,b,b,b,w,w,w,w,w,w,w,w],
-[b,b,b,b,b,b,b,b,w,w,w,w,w,w,w],
-[b,b,b,b,b,b,b,b,b,w,w,w,w,w,w],
-[b,b,b,b,b,b,b,b,b,b,w,w,w,w,w],
-[b,b,b,b,b,b,b,b,b,b,b,w,w,w,w],
-[b,b,b,b,b,b,b,b,b,b,b,b,w,w,w],
-[b,b,b,b,b,b,b,b,b,b,b,b,b,w,w],
-[b,b,b,b,b,b,b,b,b,b,b,b,b,b,w],
-[b,b,b,b,b,b,b,b,b,b,b,b,b,b,b]
-])
-block_15_right_flip = np.array([
-[w,w,w,w,w,w,w,w,w,w,w,w,w,w,b],
-[w,w,w,w,w,w,w,w,w,w,w,w,w,b,b],
-[w,w,w,w,w,w,w,w,w,w,w,w,b,b,b],
-[w,w,w,w,w,w,w,w,w,w,w,b,b,b,b],
-[w,w,w,w,w,w,w,w,w,w,b,b,b,b,b],
-[w,w,w,w,w,w,w,w,w,b,b,b,b,b,b],
-[w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-[w,w,w,w,w,w,w,b,b,b,b,b,b,b,b],
-[w,w,w,w,w,w,b,b,b,b,b,b,b,b,b],
-[w,w,w,w,w,b,b,b,b,b,b,b,b,b,b],
-[w,w,w,w,b,b,b,b,b,b,b,b,b,b,b],
-[w,w,w,b,b,b,b,b,b,b,b,b,b,b,b],
-[w,w,b,b,b,b,b,b,b,b,b,b,b,b,b],
-[w,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
-[b,b,b,b,b,b,b,b,b,b,b,b,b,b,b]
-])
-
-# block_15_right = np.array([
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b],
-# [w,w,w,w,w,w,w,w,b,b,b,b,b,b,b]
-# ])
-
  
 
 block_left = block_5_left
@@ -203,6 +115,8 @@ halfblock = int(np.floor(blocksize/2))
 
 # width of the initial scan block
 scanwidth = 75
+# offset pixels inwards (x) for the initial scan block
+scanoffset = 25
 # width of the scan block when a valid point has been found previously (smaller)
 scanwidthmin = 30
 # height of the scan block
@@ -210,9 +124,9 @@ scanheight = 5
 # space between scan blocks
 scanspacing = 0
 # total number of scan lines vertically
-scanlines = 20
+scanlines = 18
 # pixels from the bottom that the scanlines first index starts from
-scanstartline = 40
+scanstartline = 45
 # the threshold for detection for post correlation
 threshold = 1
 # Colors!
@@ -239,6 +153,7 @@ time.sleep(0.1)
 # capture frames from the camera
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True, resize=(320,240)):
     # grab the raw NumPy array representing the image,
+    start_time = time.time()
 
     frame = frame.array
     ysize = frame.shape[0]
@@ -247,8 +162,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # step2: define top left corner of starting scan block
-    L_index = [0,ysize - scanstartline]
-    R_index = [xsize - scanwidth, ysize - scanstartline]
+    L_index = [scanoffset, ysize - scanstartline]
+    R_index = [xsize - scanwidth - scanoffset, ysize - scanstartline]
 
     # reset some parameters
     leftblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
@@ -259,7 +174,6 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     lanerightcount = 0
 
     # begin algo timing
-    start_time = time.time()
 
 ####### main process loop
     # for loop controls how many blocks vertically are checked
@@ -341,15 +255,6 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                 R_index[0] = xsize-scanwidthr
 
     ####### end processing
-    proc_time = time.time() - start_time
-    if smooth_time == 0:
-        smooth_time = proc_time
-    else:
-        smooth_time = 0.95*smooth_time + 0.05*proc_time
-    fps_calc = int(1/smooth_time) 
-    sys.stdout.write("\rtime: %f, frames: %d               " % (smooth_time, fps_calc))
-    sys.stdout.flush()
-    #time it from here
 
     leftblob = np.multiply(leftblob, 0.1)
     rightblob = np.multiply(rightblob, 0.1)
@@ -405,6 +310,18 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         next = 1
     if key == ord("q"):
         break
+
+    proc_time = time.time() - start_time
+    if smooth_time == 0:
+        smooth_time = proc_time
+    else:
+        smooth_time = 0.95*smooth_time + 0.05*proc_time
+    fps_calc = int(1/smooth_time) 
+    sys.stdout.write("\rtime: %f, frames: %d               " % (smooth_time, fps_calc))
+    sys.stdout.flush()
+    #time it from here
+
+
 
 cap.release()
 sys.exit(0)
