@@ -16,6 +16,7 @@ import numpy as np
 import os
 import scipy.signal
 import sys
+import pathfindershield
 
 def line(p1, p2):
     A = (p1[1] - p2[1])
@@ -258,7 +259,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
     leftblob = np.multiply(leftblob, 0.1)
     rightblob = np.multiply(rightblob, 0.1)
-
+    leftangle = 0
+    rightangle = 0
     if(laneleftcount > 4):
         L1 = line(laneleft[0], laneleft[1])
         L2 = line(laneleft[laneleftcount-1], laneleft[laneleftcount-2])
@@ -272,6 +274,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         #else:
             # print ("leftside: No single intersection point detected")
 
+        #semi jank all linear approx.
+        a = laneleft[0]
+        b = laneleft[laneleftcount-1]
+        imagine = (a[0]-b[0]) + 1j*(a[1] - b[1])
+        leftangle = np.angle(imagine, deg=True)
     if(lanerightcount > 4):
         L1 = line(laneright[0], laneright[1])
         L2 = line(laneright[lanerightcount-1], laneright[lanerightcount-2])
@@ -284,13 +291,17 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             # print ("Intersection detected:", R)
         #else:
             # print ("right side: No single intersection point detected")
-
+        a = laneright[0]
+        b = laneright[lanerightcount-1]
+        imagine = (a[0]-b[0]) + 1j*(a[1] - b[1])
+        rightangle = np.angle(imagine, deg=True)
 
     cv2.imshow('frame', frame)
     cv2.imshow('left', leftblob)
     cv2.imshow('right', rightblob)
 
-
+    
+    pathfindershield.motorservocmd4(0, 0, 0, 132)
 
 
 
@@ -317,7 +328,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     else:
         smooth_time = 0.95*smooth_time + 0.05*proc_time
     fps_calc = int(1/smooth_time) 
-    sys.stdout.write("\rtime: %f, frames: %d               " % (smooth_time, fps_calc))
+    sys.stdout.write("\rtime: %f, frames: %d   left:%2fdeg right:%2fdeg            " % (smooth_time, fps_calc, leftangle, rightangle))
     sys.stdout.flush()
     #time it from here
 
