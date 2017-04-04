@@ -5,7 +5,7 @@ import time
 # def motorservocmd4(Bspeed, Bdir, Bbrake, Servo2):
 
 print('running around')
-speed = 50
+speed = 0
 dir = 0
 brake = 0
 angle = 0
@@ -20,5 +20,5 @@ while True:
         pathfindershield.motorservocmd4(speed, dir, brake, angle)
         print(angle)
     
-    time.sleep(.001)
+    time.sleep(.01)
     angle += 1

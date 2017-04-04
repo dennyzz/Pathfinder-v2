@@ -2,7 +2,7 @@
 
 import smbus
 import sys
-
+import subprocess
 
 # Usage: 
 # [0] status? blank
@@ -106,9 +106,12 @@ def motorservocmd4(Bspeed, Bdir, Bbrake, Servo2):
     cmd1 = [CTRLB, Bspeed]
     cmd2 = Servo2
 
-    bus.write_i2c_block_data(DEVICE_ADDRESS, REG_MOTB, cmd1)
-    bus.write_byte_data(DEVICE_ADDRESS, REG_SERVO2, cmd2)
-
+    try:
+        bus.write_i2c_block_data(DEVICE_ADDRESS, REG_MOTB, cmd1)
+        bus.write_byte_data(DEVICE_ADDRESS, REG_SERVO2, cmd2)
+    except IOError:
+        subprocess.call(['i2cdetect', '-y', '1'])
+        flag = 1     #optional flag to signal your code to resend or something
 
 def motorservoledcmd(leds):
     bus = smbus.SMBus(1)    # 0 = /dev/i2c-0 (port I2C0), 1 = /dev/i2c-1 (port I2C1)
