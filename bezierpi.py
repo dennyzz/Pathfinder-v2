@@ -6,7 +6,6 @@
 #   pip install those files
 
 
-
 #import the necessary packages
 from picamera import PiCamera
 from picamera.array import PiRGBArray
@@ -106,13 +105,15 @@ block_5_right_flip = np.array([
 [b,b,b,b,b] 
 ])
  
-
+# BLOCK CONFIGURATION
 block_left = block_5_left
 block_right = block_5_right 
 block_left_flip = block_5_left_flip
 block_right_flip = block_5_right_flip
 blocksize = 5
 halfblock = int(np.floor(blocksize/2))
+### END BLOCK CONFIG ###
+### MOST GLOBAL TUNING PARAMETERS ###
 
 # width of the initial scan block
 scanwidth = 100
@@ -130,6 +131,9 @@ scanlines = 18
 scanstartline = 45
 # the threshold for detection for post correlation
 threshold = 1
+
+### END GLOBAL TUNING PARAMETERS ###
+
 # Colors!
 green = (0,255,0)
 red = (0,0,255)
@@ -148,9 +152,14 @@ camera = PiCamera()
 camera.resolution = (320, 240)
 camera.framerate = 30
 rawCapture = PiRGBArray(camera, size=(320, 240))
- 
+
 # # allow the camera to warmup
 time.sleep(0.1)
+
+# initialize the VL53L0x
+tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+
+
 # capture frames from the camera
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True, resize=(320,240)):
     # grab the raw NumPy array representing the image,
@@ -159,6 +168,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     frame = frame.array
     ysize = frame.shape[0]
     xsize = frame.shape[1]
+
+    # maybe a speedup if we clear the stream here...?
+    rawCapture.truncate(0)
+
     # step1: grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -303,19 +316,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     #cv2.imshow('left', leftblob)
     #cv2.imshow('right', rightblob)
 
-
-
-
-
-    # cv2.imshow('left', leftshow)
-    # cv2.imshow('right', rightshow)
-
-    # show the frame
-    #cv2.imshow("Frame", frame)
     key = cv2.waitKey(1) & 0xFF
 
     # clear the stream in preparation for the next frame
-    rawCapture.truncate(0)
+    # try moving the stream clear
+    # rawCapture.truncate(0)
 
     #if the `q` key was pressed, break from the loop
     if key == ord("n"):
@@ -323,16 +328,23 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         next = 1
     if key == ord("q"):
         break
+
+    distance = tof.get_distance()
+
     offset = leftx - rightx
     angle = 132 - int(((leftangle + rightangle)/2)-90)*3 + int(offset/2)
-    pathfindershield.motorservocmd4(70, 0, 0, angle)
+    if distance < 50:
+        pathfindershield.motorservocmd4(0,0,0,angle)
+    else:
+        pathfindershield.motorservocmd4(70, 0, 0, angle)
+
     proc_time = time.time() - start_time
     if smooth_time == 0:
         smooth_time = proc_time
     else:
         smooth_time = 0.95*smooth_time + 0.05*proc_time
     fps_calc = int(1/smooth_time) 
-    sys.stdout.write("\rtime: %f, frames: %d  offset: %d  left:%.2fdeg right:%.2fdeg outangle:%d        " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle))
+    sys.stdout.write("\rtime: %f, frames: %d  offset: %d  left:%.2fdeg right:%.2fdeg outangle:%d mm:%d       " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle, distance))
     sys.stdout.flush()
     #time it from here
 
