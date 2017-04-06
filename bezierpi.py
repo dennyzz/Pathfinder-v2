@@ -16,6 +16,7 @@ import os
 import scipy.signal
 import sys
 import pathfindershield
+import VL53L0X
 
 def line(p1, p2):
     A = (p1[1] - p2[1])
@@ -69,6 +70,7 @@ def lsqfit(points,M):
 # cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
 # fps = cap.get(cv2.CAP_PROP_FPS)
 
+tof = VL53L0X.VL53L0X()
 # print(fps)
 w = 1/20
 b = -1/20
@@ -131,6 +133,9 @@ scanlines = 18
 scanstartline = 45
 # the threshold for detection for post correlation
 threshold = 1
+
+# Distance for collision detection
+stopdistance = 150
 
 ### END GLOBAL TUNING PARAMETERS ###
 
@@ -333,10 +338,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
     offset = leftx - rightx
     angle = 132 - int(((leftangle + rightangle)/2)-90)*3 + int(offset/2)
-    if distance < 50:
+    if distance < stopdistance:
         pathfindershield.motorservocmd4(0,0,0,angle)
     else:
-        pathfindershield.motorservocmd4(70, 0, 0, angle)
+        pathfindershield.motorservocmd4(80, 0, 0, angle)
 
     proc_time = time.time() - start_time
     if smooth_time == 0:
