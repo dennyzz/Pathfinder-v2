@@ -303,25 +303,14 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     rightangle = 0
     leftx = xsize/2
     rightx = xsize/2
-    if(laneleftcount > 4):
-        L1 = line(laneleft[0], laneleft[1])
-        L2 = line(laneleft[laneleftcount-1], laneleft[laneleftcount-2])
-
-        R = intersection(L1, L2)
-        if R:
-            R = (int(R[0]), int(R[1]))
-            #cv2.line(frame, (laneleft[0][0], laneleft[0][1]), R, orange, 1)
-            #cv2.line(frame, (laneleft[laneleftcount-1][0], laneleft[laneleftcount-1][1]), R, orange, 1)
-            # print ("Intersection detected:", R)
-        #else:
-            # print ("leftside: No single intersection point detected")
-
-        #semi jank all linear approx.
+    if(laneleftcount > ):
+        #semi jank all linear approx. angle detection of the left lane
         a = laneleft[0]
         b = laneleft[laneleftcount-1]
         imagine = (a[0]-b[0]) + 1j*(a[1] - b[1])
         leftangle = np.angle(imagine, deg=True)
-        leftx = leftx - laneleft[0][0]        
+        leftx = leftx - laneleft[0][0]
+
     if(lanerightcount > 4):
         L1 = line(laneright[0], laneright[1])
         L2 = line(laneright[lanerightcount-1], laneright[lanerightcount-2])
@@ -334,11 +323,13 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             # print ("Intersection detected:", R)
         #else:
             # print ("right side: No single intersection point detected")
+        # angle detection of the right lane!
         a = laneright[0]
         b = laneright[1]
         imagine = (a[0]-b[0]) + 1j*(a[1] - b[1])
         rightangle = np.angle(imagine, deg=True)
         rightx = laneright[0][0] - rightx
+
     cv2.imshow('frame', frame)
     #cv2.imshow('left', leftblob)
     #cv2.imshow('right', rightblob)

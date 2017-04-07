@@ -14,6 +14,13 @@ import numpy as np
 import os
 import scipy.signal
 import sys
+from scipy.optimize import curve_fit
+
+def quadratic(x, a, b, c):
+    return a * x * x + b * x + c
+
+def cubic(x, a, b, c, d):
+    return a * x * x * x + b * x * x + c * x + d
 
 def line(p1, p2):
     A = (p1[1] - p2[1])
@@ -71,6 +78,9 @@ cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
 w = 1/200
 b = -1/200
 smooth_time = 0
+proc_algo_time_s = 0
+proc_post_time_s = 0
+proc_pre_time_s = 0
 # block_5_left = np.array([[b,b,b,b,b], [b,b,b,b,w], [b,b,b,w,w], [b,b,w,w,w], [b,w,w,w,w]])
 # block_5_right = np.array([[b,b,b,b,b], [w,b,b,b,b], [w,w,b,b,b], [w,w,w,b,b], [w,w,w,w,b]])
 
@@ -169,13 +179,11 @@ block_right_flip = block_15_right_flip
 blocksize = 15
 halfblock = int(np.floor(blocksize/2))
 
-f = open('workfile.txt', 'w')
-print(f)
 scanwidth = 300
 scanwidthmin = 100
 scanheight = 15
 scanspacing = 15
-scanlines = 30
+scanlines = 40
 threshold = 1
 green = (0,255,0)
 red = (0,0,255)
@@ -187,9 +195,10 @@ laneright= np.empty((scanlines,2), dtype = np.int32)
 laneleftcount = 0
 lanerightcount = 0
 
-
+start_time = time.time()
 while cap:
     ret, frame = cap.read()
+    start_pre_time = time.time()
     ysize = frame.shape[0]
     xsize = frame.shape[1]
     # step1: grayscale
@@ -208,8 +217,9 @@ while cap:
     lanerightcount = 0
 
     # begin algo timing
-    start_time = time.time()
 
+    proc_pre_time = (time.time() - start_pre_time) * 1000
+    start_algo_time = time.time()
 ####### main process loop
     # for loop controls how many blocks vertically are checked
     for x in range(0,scanlines):
@@ -295,21 +305,45 @@ while cap:
                 R_index[0] = xsize-scanwidthr
 
     ####### end processing
-    proc_time = time.time() - start_time
-    if smooth_time == 0:
-        smooth_time = proc_time
-    else:
-        smooth_time = 0.95*smooth_time + 0.05*proc_time
-    fps_calc = int(1/smooth_time) 
-    sys.stdout.write("\rtime: %f, frames: %d               " % (smooth_time, fps_calc))
-    sys.stdout.flush()
-    #time it from here
+    proc_algo_time = (time.time() - start_algo_time)*1000
+    ####### end processing
 
 
 
     #reconstruct line segments?
     leftblob = np.multiply(leftblob, 0.1)
     rightblob = np.multiply(rightblob, 0.1)
+
+    start_post_time = time.time()
+
+    if laneleftcount > 6: # means we got a decent detection
+        # flip the axes to get a real function
+        x = laneleft[0:laneleftcount, 1]
+        y = laneleft[0:laneleftcount, 0]
+        popt, pcov = curve_fit(quadratic, x, y)
+        x = 0
+        y = quadratic(0, popt[0], popt[1], popt[2])
+        prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
+        for y in range(25, ysize, 25):
+            x = int(quadratic(y, popt[0], popt[1], popt[2]))
+            cv2.line(frame,prevpoint,(x,y),orange,2)
+            prevpoint = (x,y)
+
+    if lanerightcount > 6: 
+        # popt, pcov = curve_fit(quadratic, x, y)
+        x = laneright[0:lanerightcount, 1]
+        y = laneright[0:lanerightcount, 0]
+        popt, pcov = curve_fit(quadratic, x, y)
+        x = 0
+        y = quadratic(0, popt[0], popt[1], popt[2])
+        prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
+        for y in range(25, ysize, 25):
+            x = int(quadratic(y, popt[0], popt[1], popt[2]))
+            cv2.line(frame,prevpoint,(x,y),orange,2)
+            prevpoint = (x,y)
+
+    proc_post_time = (time.time() - start_post_time)*1000
+
 
     if(laneleftcount > 4):
         L1 = line(laneleft[0], laneleft[1])
@@ -318,11 +352,11 @@ while cap:
         R = intersection(L1, L2)
         if R:
             R = (int(R[0]), int(R[1]))
-            cv2.line(frame, (laneleft[0][0], laneleft[0][1]), R, orange, 2)
-            cv2.line(frame, (laneleft[laneleftcount-1][0], laneleft[laneleftcount-1][1]), R, orange, 2)
+            # cv2.line(frame, (laneleft[0][0], laneleft[0][1]), R, orange, 2)
+            # cv2.line(frame, (laneleft[laneleftcount-1][0], laneleft[laneleftcount-1][1]), R, orange, 2)
             # print ("Intersection detected:", R)
-        else:
-            print ("leftside: No single intersection point detected")
+        # else:
+            # print ("leftside: No single intersection point detected")
 
     if(lanerightcount > 4):
         L1 = line(laneright[0], laneright[1])
@@ -331,16 +365,16 @@ while cap:
         R = intersection(L1, L2)
         if R:
             R = (int(R[0]), int(R[1]))
-            cv2.line(frame, (laneright[0][0], laneright[0][1]), R, orange, 2)
-            cv2.line(frame, (laneright[lanerightcount-1][0], laneright[lanerightcount-1][1]), R, orange, 2)
+            # cv2.line(frame, (laneright[0][0], laneright[0][1]), R, orange, 2)
+            # cv2.line(frame, (laneright[lanerightcount-1][0], laneright[lanerightcount-1][1]), R, orange, 2)
             # print ("Intersection detected:", R)
-        else:
-            print ("right side: No single intersection point detected")
+        # else:
+            # print ("right side: No single intersection point detected")
 
-
-    cv2.imshow('frame', gray)
+    cv2.imshow('frame', frame)
     cv2.imshow('left', leftblob)
     cv2.imshow('right', rightblob)
+
 
 
 
@@ -355,7 +389,33 @@ while cap:
 
     # clear the stream in preparation for the next frame
     # rawCapture.truncate(0)
-
+    proc_time = (time.time() - start_time)*1000
+    if smooth_time == 0:
+        smooth_time = proc_time
+    else:
+        smooth_time = 0.9*smooth_time + 0.1*proc_time
+        
+    if proc_algo_time_s == 0:
+        proc_algo_time_s = proc_algo_time
+    else:
+        proc_algo_time_s = 0.9*proc_algo_time_s + 0.1*proc_algo_time
+        
+    if proc_post_time_s == 0:
+        proc_post_time_s = proc_post_time
+    else:
+        proc_post_time_s = 0.9*proc_post_time_s + 0.1*proc_post_time
+        
+    if proc_pre_time_s == 0:
+        proc_pre_time_s = proc_pre_time
+    else:
+        proc_pre_time_s = 0.9*proc_pre_time_s + 0.1*proc_pre_time
+        
+    fps_calc = int(1000/smooth_time)
+    sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
+    # sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg cmdangle:%d mm:%d       " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle, distance))
+    sys.stdout.flush()
+    #time it from here
+    start_time = time.time()
     #if the `q` key was pressed, break from the loop
     if key == ord("n"):
         print("next")
