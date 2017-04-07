@@ -9,6 +9,7 @@
 #import the necessary packages
 from picamera import PiCamera
 from picamera.array import PiRGBArray
+from scipy.optimize import curve_fit
 import time
 import cv2
 import numpy as np
@@ -19,57 +20,20 @@ import pathfindershield
 import VL53L0X
 import PID
 
-def line(p1, p2):
-    A = (p1[1] - p2[1])
-    B = (p2[0] - p1[0])
-    C = (p1[0]*p2[1] - p2[0]*p1[1])
-    return A, B, -C
+def quadratic(x, a, b, c):
+    return a*x**2 + b*x + c
 
-def intersection(L1, L2):
-    D  = L1[0] * L2[1] - L1[1] * L2[0]
-    Dx = L1[2] * L2[1] - L1[1] * L2[2]
-    Dy = L1[0] * L2[2] - L1[2] * L2[0]
-    if D != 0:
-        x = Dx / D
-        y = Dy / D
-        return x,y
-    else:
-        return False
+def d_quadratic(x, a, b, c):
+    return 2*a*x + b
 
+def cubic(x, a, b, c, d):
+    return a*x**3 + b*x**2 + c*x + d
 
-'''least square qbezier fit using penrose pseudoinverse
-    >>> V=array
-    >>> E,  W,  N,  S =  V((1,0)), V((-1,0)), V((0,1)), V((0,-1))
-    >>> cw = 100
-    >>> ch = 300
-    >>> cpb = V((0, 0))
-    >>> cpe = V((cw, 0))
-    >>> xys=[cpb,cpb+ch*N+E*cw/8,cpe+ch*N+E*cw/8, cpe]            
-    >>> 
-    >>> ts = V(range(11))/10
-    >>> M = bezierM (ts)
-    >>> points = M*xys #produces the points on the bezier curve at t in ts
-    >>> 
-    >>> control_points=lsqfit(points, M)
-    >>> linalg.norm(control_points-xys)<10e-5
-    True
-    >>> control_points.tolist()[1]
-    [12.500000000000037, 300.00000000000017]
+def quartic(x, a, b, c, d, e):
+    return a*x*x*x*x + b*x*x*x + c*x*x + d*x + e
 
-'''
-from numpy import array, linalg, matrix
-from scipy.misc import comb as nOk
-Mtk = lambda n, t, k: t**(k)*(1-t)**(n-k)*nOk(n,k)
-bezierM = lambda ts: matrix([[Mtk(3,t,k) for k in range(4)] for t in ts])
-def lsqfit(points,M):
-    M_ = linalg.pinv(M)
-    return M_ * points
-
-
-# cap = cv2.VideoCapture("footage/radius2angle75.mp4")
-# cap = cv2.VideoCapture("footage/0degree.mp4 ")
-# cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
-# fps = cap.get(cv2.CAP_PROP_FPS)
+def exponential(x, a, b):
+    return a**x + b
 
 tof = VL53L0X.VL53L0X()
 # print(fps)
@@ -124,11 +88,11 @@ halfblock = int(np.floor(blocksize/2))
 #image resolution values
 res_x = 320
 res_y = 240
+xsize = res_x
+ysize = res_y
 
 # width of the initial scan block
 scanwidth = 100
-# offset pixels inwards (x) for the initial scan block
-scanoffset = 25
 # width of the scan block when a valid point has been found previously (smaller)
 scanwidthmin = 30
 # height of the scan block
@@ -137,6 +101,8 @@ scanheight = 5
 scanspacing = 0
 # total number of scan lines vertically
 scanlines = 18
+# offset pixels inwards (x) for the initial scan block
+scanstartoffset = 25
 # pixels from the bottom that the scanlines first index starts from
 scanstartline = 45
 # the threshold for detection for post correlation
@@ -149,6 +115,8 @@ output = 1
 stopdistance = 150
 # Servo value for approximate middle value
 servo_center = 132
+# value for minimum number of good edges detected for curve fitting 
+min_data_good = 6
 
 # def __init__(self, P=2.0, I=0.0, D=1.0, Derivator=0, Integrator=0, Integrator_max=500, Integrator_min=-500):
 PIDangle = PID(2.0, 0.0, 1.0)
@@ -169,6 +137,11 @@ laneright= np.empty((scanlines,2), dtype = np.int32)
 laneleftcount = 0
 lanerightcount = 0
 
+# angle and offset datas used for course correction
+leftangle = 0
+rightangle = 0
+leftx = xsize/2
+rightx = xsize/2
 
 # # initialize the camera and grab a reference to the raw camera capture
 camera = PiCamera()
@@ -191,8 +164,6 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     start_pre_time = time.time()
 
     frame = frame.array
-    ysize = frame.shape[0]
-    xsize = frame.shape[1]
 
     # maybe a speedup if we clear the stream here...?
     rawCapture.truncate(0)
@@ -299,36 +270,56 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     
     leftblob = np.multiply(leftblob, 0.1)
     rightblob = np.multiply(rightblob, 0.1)
-    leftangle = 0
-    rightangle = 0
-    leftx = xsize/2
-    rightx = xsize/2
-    if(laneleftcount > ):
-        #semi jank all linear approx. angle detection of the left lane
-        a = laneleft[0]
-        b = laneleft[laneleftcount-1]
-        imagine = (a[0]-b[0]) + 1j*(a[1] - b[1])
-        leftangle = np.angle(imagine, deg=True)
-        leftx = leftx - laneleft[0][0]
 
-    if(lanerightcount > 4):
-        L1 = line(laneright[0], laneright[1])
-        L2 = line(laneright[lanerightcount-1], laneright[lanerightcount-2])
 
-        R = intersection(L1, L2)
-        if R:
-            R = (int(R[0]), int(R[1]))
-            #cv2.line(frame, (laneright[0][0], laneright[0][1]), R, orange, 1)
-            #cv2.line(frame, (laneright[lanerightcount-1][0], laneright[lanerightcount-1][1]), R, orange, 1)
-            # print ("Intersection detected:", R)
-        #else:
-            # print ("right side: No single intersection point detected")
+    if(laneleftcount > min_data_good):
+        # flip the axes to get a real function
+        x = laneleft[0:laneleftcount, 1]
+        y = laneleft[0:laneleftcount, 0]
+        popt, pcov = curve_fit(quadratic, x, y)
+
+        prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
+        for y in range(10, ysize, 10):
+            x = int(quadratic(y, popt[0], popt[1], popt[2]))
+            cv2.line(frame,prevpoint,(x,y),orange,2)
+            prevpoint = (x,y)
+
+        # offset computed from curve fit at scan start location
+        leftx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        # angle computed from tangent of curve fit at scan start location
+        slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        rads = np.arctan(slope)
+        leftangle = rads/np.pi*180 + 180
+    if(lanerightcount > min_data_good):
+        # popt, pcov = curve_fit(quadratic, x, y)
+        x = laneright[0:lanerightcount, 1]
+        y = laneright[0:lanerightcount, 0]
+        popt, pcov = curve_fit(quadratic, x, y)
+        x = 0
+        y = quadratic(0, popt[0], popt[1], popt[2])
+        prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
+        for y in range(10, ysize, 10):
+            x = int(quadratic(y, popt[0], popt[1], popt[2]))
+            cv2.line(frame,prevpoint,(x,y),orange,2)
+            prevpoint = (x,y)
+
+        # offset computed from curve fit at scan start location
+        rightx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        # angle computed from tangent of curve fit at scan start location
+        slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        rads = np.arctan(slope)
+        rightangle = rads/np.pi*180 + 180
+
+
+    # the idea now is to use the curve fit at scan point to find both the lane offsets, and tangents as angle offsets
+    # what happens if we dont' have enough points? well currently, we just use the old value
+
         # angle detection of the right lane!
         a = laneright[0]
         b = laneright[1]
         imagine = (a[0]-b[0]) + 1j*(a[1] - b[1])
         rightangle = np.angle(imagine, deg=True)
-        rightx = laneright[0][0] - rightx
+        rightx = laneright[0][0] - xsize/2
 
     cv2.imshow('frame', frame)
     #cv2.imshow('left', leftblob)
@@ -395,7 +386,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         
     fps_calc = int(1000/smooth_time)
     # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg cmdangle:%d mm:%d       " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle, distance))
+    sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg cmdangle:%d mm:%d       " % (smooth_time, fps_calc, offset_adj, leftangle, rightangle, angle_adj, distance))
     sys.stdout.flush()
     #time it from here
     start_time = time.time()

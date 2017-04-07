@@ -19,8 +19,17 @@ from scipy.optimize import curve_fit
 def quadratic(x, a, b, c):
     return a * x * x + b * x + c
 
+def d_quadratic(x, a, b):
+    return 2*a*x + b
+
 def cubic(x, a, b, c, d):
     return a * x * x * x + b * x * x + c * x + d
+
+def quartic(x, a, b, c, d, e):
+    return a * x * x * x * x + b * x * x * x + c * x * x + d * x + e
+
+def exponential(x, a, b):
+    return a**x + b
 
 def line(p1, p2):
     A = (p1[1] - p2[1])
@@ -70,8 +79,8 @@ def lsqfit(points,M):
 
 
 # cap = cv2.VideoCapture("footage/radius2angle75.mp4")
-# cap = cv2.VideoCapture("footage/0degree.mp4 ")
-cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
+cap = cv2.VideoCapture("footage/0degree.mp4 ")
+# cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
 # fps = cap.get(cv2.CAP_PROP_FPS)
 
 # print(fps)
@@ -81,6 +90,10 @@ smooth_time = 0
 proc_algo_time_s = 0
 proc_post_time_s = 0
 proc_pre_time_s = 0
+
+blah, temp = cap.read()
+ysize = temp.shape[0]
+xsize = temp.shape[1]
 # block_5_left = np.array([[b,b,b,b,b], [b,b,b,b,w], [b,b,b,w,w], [b,b,w,w,w], [b,w,w,w,w]])
 # block_5_right = np.array([[b,b,b,b,b], [w,b,b,b,b], [w,w,b,b,b], [w,w,w,b,b], [w,w,w,w,b]])
 
@@ -185,6 +198,12 @@ scanheight = 15
 scanspacing = 15
 scanlines = 40
 threshold = 1
+# value for minimum number of good edges detected for curve fitting 
+min_data_good = 6
+# pixels from the bottom that the scanlines first index starts from
+scanstartline = 150
+
+
 green = (0,255,0)
 red = (0,0,255)
 blue = (255,0,0)
@@ -195,18 +214,22 @@ laneright= np.empty((scanlines,2), dtype = np.int32)
 laneleftcount = 0
 lanerightcount = 0
 
+# angle and offset datas used for course correction
+leftangle = 0
+rightangle = 0
+leftx = xsize/2
+rightx = xsize/2
+
 start_time = time.time()
 while cap:
     ret, frame = cap.read()
     start_pre_time = time.time()
-    ysize = frame.shape[0]
-    xsize = frame.shape[1]
     # step1: grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # step2: define top left corner of starting scan block
-    L_index = [0,ysize-150]
-    R_index = [xsize-300, ysize-150]
+    L_index = [0,ysize-scanstartline]
+    R_index = [xsize-300, ysize-scanstartline]
 
     # reset some parameters
     leftblob = np.empty((scanlines*15, 286))
@@ -316,20 +339,25 @@ while cap:
 
     start_post_time = time.time()
 
-    if laneleftcount > 6: # means we got a decent detection
+    if(laneleftcount > min_data_good):
         # flip the axes to get a real function
         x = laneleft[0:laneleftcount, 1]
         y = laneleft[0:laneleftcount, 0]
         popt, pcov = curve_fit(quadratic, x, y)
-        x = 0
-        y = quadratic(0, popt[0], popt[1], popt[2])
+
         prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
-        for y in range(25, ysize, 25):
+        for y in range(10, ysize, 10):
             x = int(quadratic(y, popt[0], popt[1], popt[2]))
             cv2.line(frame,prevpoint,(x,y),orange,2)
             prevpoint = (x,y)
 
-    if lanerightcount > 6: 
+        # offset computed from curve fit at scan start location
+        leftx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        # angle computed from tangent of curve fit at scan start location
+        slope = d_quadratic(ysize-scanstartline, popt[0], popt[1])
+        rads = np.arctan(slope)
+        leftangle = rads/np.pi*180
+    if(lanerightcount > min_data_good):
         # popt, pcov = curve_fit(quadratic, x, y)
         x = laneright[0:lanerightcount, 1]
         y = laneright[0:lanerightcount, 0]
@@ -337,39 +365,21 @@ while cap:
         x = 0
         y = quadratic(0, popt[0], popt[1], popt[2])
         prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
-        for y in range(25, ysize, 25):
+        for y in range(10, ysize, 10):
             x = int(quadratic(y, popt[0], popt[1], popt[2]))
             cv2.line(frame,prevpoint,(x,y),orange,2)
             prevpoint = (x,y)
 
+        # offset computed from curve fit at scan start location
+        rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2]) - xsize/2
+        # angle computed from tangent of curve fit at scan start location
+        slope = d_quadratic(ysize-scanstartline, popt[0], popt[1])
+        rads = np.arctan(slope)
+        rightangle = rads/np.pi*180
+
+    offset = leftx - rightx 
+    angle = ((rightangle + leftangle)/2)
     proc_post_time = (time.time() - start_post_time)*1000
-
-
-    if(laneleftcount > 4):
-        L1 = line(laneleft[0], laneleft[1])
-        L2 = line(laneleft[laneleftcount-1], laneleft[laneleftcount-2])
-
-        R = intersection(L1, L2)
-        if R:
-            R = (int(R[0]), int(R[1]))
-            # cv2.line(frame, (laneleft[0][0], laneleft[0][1]), R, orange, 2)
-            # cv2.line(frame, (laneleft[laneleftcount-1][0], laneleft[laneleftcount-1][1]), R, orange, 2)
-            # print ("Intersection detected:", R)
-        # else:
-            # print ("leftside: No single intersection point detected")
-
-    if(lanerightcount > 4):
-        L1 = line(laneright[0], laneright[1])
-        L2 = line(laneright[lanerightcount-1], laneright[lanerightcount-2])
-
-        R = intersection(L1, L2)
-        if R:
-            R = (int(R[0]), int(R[1]))
-            # cv2.line(frame, (laneright[0][0], laneright[0][1]), R, orange, 2)
-            # cv2.line(frame, (laneright[lanerightcount-1][0], laneright[lanerightcount-1][1]), R, orange, 2)
-            # print ("Intersection detected:", R)
-        # else:
-            # print ("right side: No single intersection point detected")
 
     cv2.imshow('frame', frame)
     cv2.imshow('left', leftblob)
@@ -411,8 +421,8 @@ while cap:
         proc_pre_time_s = 0.9*proc_pre_time_s + 0.1*proc_pre_time
         
     fps_calc = int(1000/smooth_time)
-    sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    # sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg cmdangle:%d mm:%d       " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle, distance))
+    # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
+    sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg angle:%d      " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle))
     sys.stdout.flush()
     #time it from here
     start_time = time.time()
