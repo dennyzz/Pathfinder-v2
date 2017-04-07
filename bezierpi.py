@@ -17,6 +17,7 @@ import scipy.signal
 import sys
 import pathfindershield
 import VL53L0X
+import PID
 
 def line(p1, p2):
     A = (p1[1] - p2[1])
@@ -146,6 +147,13 @@ output = 1
 
 # Distance for collision detection
 stopdistance = 150
+# Servo value for approximate middle value
+servo_center = 132
+
+# def __init__(self, P=2.0, I=0.0, D=1.0, Derivator=0, Integrator=0, Integrator_max=500, Integrator_min=-500):
+PIDangle = PID(2.0, 0.0, 1.0)
+PIDoffset = PID(2.0, 0.0, 1.0)
+
 
 ### END GLOBAL TUNING PARAMETERS ###
 
@@ -352,10 +360,20 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     
     distance = tof.get_distance()
 
-    offset = leftx - rightx
-    angle = 132 - int(((leftangle + rightangle)/2)-90)*3 + int(offset/2)
+    #offset error in pixels from center screen +means turn left to correct
+    offseterror = leftx - rightx 
+    offset_adj = PIDoffset.update_error(offseterror);
+    #angle error in degrees from vertical +means turn left to correct
+    angleerror = ((leftangle + rightangle)/2)-90
+    angle_adj = PIDangle.update_error(angleerror);
 
+    servocmd = servo_center + offset_adj + angle_adj
+    # servocmd = 132 - int(((leftangle + rightangle)/2)-90)*3 + int(offset/2)
 
+    if servocmd > 255:
+        servocmd = 255
+    else if servocmd < 0:
+        servocmd = 0
     
     if output:
         if distance < stopdistance:
