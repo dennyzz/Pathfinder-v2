@@ -75,6 +75,9 @@ tof = VL53L0X.VL53L0X()
 w = 1/20
 b = -1/20
 smooth_time = 0
+proc_algo_time_s = 0
+proc_post_time_s = 0
+proc_pre_time_s = 0
 block_5_left = np.array([
 [b,b,b,b,b],
 [b,b,b,b,w], 
@@ -117,6 +120,10 @@ halfblock = int(np.floor(blocksize/2))
 ### END BLOCK CONFIG ###
 ### MOST GLOBAL TUNING PARAMETERS ###
 
+#image resolution values
+res_x = 320
+res_y = 240
+
 # width of the initial scan block
 scanwidth = 100
 # offset pixels inwards (x) for the initial scan block
@@ -133,6 +140,9 @@ scanlines = 18
 scanstartline = 45
 # the threshold for detection for post correlation
 threshold = 1
+
+# turn off the output and drive commands
+output = 1
 
 # Distance for collision detection
 stopdistance = 150
@@ -154,9 +164,9 @@ lanerightcount = 0
 
 # # initialize the camera and grab a reference to the raw camera capture
 camera = PiCamera()
-camera.resolution = (320, 240)
+camera.resolution = (res_x, res_y)
 camera.framerate = 30
-rawCapture = PiRGBArray(camera, size=(320, 240))
+rawCapture = PiRGBArray(camera, size=(res_x, res_y))
 
 # # allow the camera to warmup
 time.sleep(0.1)
@@ -164,11 +174,13 @@ time.sleep(0.1)
 # initialize the VL53L0x
 tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
 
-
+start_time = time.time()
 # capture frames from the camera
-for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True, resize=(320,240)):
+for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True, resize=(res_x, res_y)):
+#frame = cv2.imread("track.png")
+#while True:
     # grab the raw NumPy array representing the image,
-    start_time = time.time()
+    start_pre_time = time.time()
 
     frame = frame.array
     ysize = frame.shape[0]
@@ -193,7 +205,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     lanerightcount = 0
 
     # begin algo timing
-
+    proc_pre_time = (time.time() - start_pre_time) * 1000
+    start_algo_time = time.time()
 ####### main process loop
     # for loop controls how many blocks vertically are checked
     for x in range(0,scanlines):
@@ -272,9 +285,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                 L_index[0] = 0
             if R_index[0] > xsize-scanwidthr:
                 R_index[0] = xsize-scanwidthr
-
+    proc_algo_time = (time.time() - start_algo_time)*1000
     ####### end processing
-
+    start_post_time = time.time()
+    
     leftblob = np.multiply(leftblob, 0.1)
     rightblob = np.multiply(rightblob, 0.1)
     leftangle = 0
@@ -288,8 +302,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         R = intersection(L1, L2)
         if R:
             R = (int(R[0]), int(R[1]))
-            cv2.line(frame, (laneleft[0][0], laneleft[0][1]), R, orange, 1)
-            cv2.line(frame, (laneleft[laneleftcount-1][0], laneleft[laneleftcount-1][1]), R, orange, 1)
+            #cv2.line(frame, (laneleft[0][0], laneleft[0][1]), R, orange, 1)
+            #cv2.line(frame, (laneleft[laneleftcount-1][0], laneleft[laneleftcount-1][1]), R, orange, 1)
             # print ("Intersection detected:", R)
         #else:
             # print ("leftside: No single intersection point detected")
@@ -307,8 +321,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         R = intersection(L1, L2)
         if R:
             R = (int(R[0]), int(R[1]))
-            cv2.line(frame, (laneright[0][0], laneright[0][1]), R, orange, 1)
-            cv2.line(frame, (laneright[lanerightcount-1][0], laneright[lanerightcount-1][1]), R, orange, 1)
+            #cv2.line(frame, (laneright[0][0], laneright[0][1]), R, orange, 1)
+            #cv2.line(frame, (laneright[lanerightcount-1][0], laneright[lanerightcount-1][1]), R, orange, 1)
             # print ("Intersection detected:", R)
         #else:
             # print ("right side: No single intersection point detected")
@@ -334,25 +348,48 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     if key == ord("q"):
         break
 
+    proc_post_time = (time.time() - start_post_time)*1000
+    
     distance = tof.get_distance()
 
     offset = leftx - rightx
     angle = 132 - int(((leftangle + rightangle)/2)-90)*3 + int(offset/2)
-    if distance < stopdistance:
-        pathfindershield.motorservocmd4(0,0,0,angle)
-    else:
-        pathfindershield.motorservocmd4(80, 0, 0, angle)
 
-    proc_time = time.time() - start_time
+
+    
+    if output:
+        if distance < stopdistance:
+            pathfindershield.motorservocmd4(50,1,0,132)
+        else:
+            pathfindershield.motorservocmd4(0, 0, 0, angle)
+
+    proc_time = (time.time() - start_time)*1000
     if smooth_time == 0:
         smooth_time = proc_time
     else:
-        smooth_time = 0.95*smooth_time + 0.05*proc_time
-    fps_calc = int(1/smooth_time) 
-    sys.stdout.write("\rtime: %f, frames: %d  offset: %d  left:%.2fdeg right:%.2fdeg outangle:%d mm:%d       " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle, distance))
+        smooth_time = 0.9*smooth_time + 0.1*proc_time
+        
+    if proc_algo_time_s == 0:
+        proc_algo_time_s = proc_algo_time
+    else:
+        proc_algo_time_s = 0.9*proc_algo_time_s + 0.1*proc_algo_time
+        
+    if proc_post_time_s == 0:
+        proc_post_time_s = proc_post_time
+    else:
+        proc_post_time_s = 0.9*proc_post_time_s + 0.1*proc_post_time
+        
+    if proc_pre_time_s == 0:
+        proc_pre_time_s = proc_pre_time
+    else:
+        proc_pre_time_s = 0.9*proc_pre_time_s + 0.1*proc_pre_time
+        
+    fps_calc = int(1000/smooth_time)
+    # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
+    sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg cmdangle:%d mm:%d       " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle, distance))
     sys.stdout.flush()
     #time it from here
-
+    start_time = time.time()
 
 
 cap.release()
