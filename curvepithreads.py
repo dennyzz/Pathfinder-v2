@@ -456,7 +456,7 @@ while not exit:
            pathfindershield.motorservocmd4(0,0,1,servo_center)
            leds |= 0xFF
        else:
-           pathfindershield.motorservocmd4(65, 0, 0, servocmd)
+           pathfindershield.motorservocmd4(55, 0, 0, servocmd)
 
     pathfindershield.motorservoledcmd(leds)
 
