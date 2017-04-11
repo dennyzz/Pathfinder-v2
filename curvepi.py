@@ -109,18 +109,18 @@ scanstartline = 45
 threshold = 1
 
 # turn off the output and drive commands
-output = 1
+output = 0
 
 # Distance for collision detection
-stopdistance = 150
+stopdistance = 0
 # Servo value for approximate middle value
 servo_center = 132
 # value for minimum number of good edges detected for curve fitting 
 min_data_good = 6
 
 # def __init__(self, P=2.0, I=0.0, D=1.0, Derivator=0, Integrator=0, Integrator_max=500, Integrator_min=-500):
-PIDangle = PID(2.0, 0.0, 1.0)
-PIDoffset = PID(2.0, 0.0, 1.0)
+PIDangle = PID.PID(1.0, 0, 0.5)
+PIDoffset = PID.PID(1.0, 0, 0.5)
 
 
 ### END GLOBAL TUNING PARAMETERS ###
@@ -172,8 +172,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # step2: define top left corner of starting scan block
-    L_index = [scanoffset, ysize - scanstartline]
-    R_index = [xsize - scanwidth - scanoffset, ysize - scanstartline]
+    L_index = [scanstartoffset, ysize - scanstartline]
+    R_index = [xsize - scanwidth - scanstartoffset, ysize - scanstartline]
 
     # reset some parameters
     leftblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
@@ -271,7 +271,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     leftblob = np.multiply(leftblob, 0.1)
     rightblob = np.multiply(rightblob, 0.1)
 
-
+    goodcheck = 0x31
     if(laneleftcount > min_data_good):
         # flip the axes to get a real function
         x = laneleft[0:laneleftcount, 1]
@@ -289,7 +289,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         # angle computed from tangent of curve fit at scan start location
         slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
         rads = np.arctan(slope)
-        leftangle = rads/np.pi*180 + 180
+        leftangle = rads/np.pi*180
+
+        goodcheck &= ~0x10
+        
     if(lanerightcount > min_data_good):
         # popt, pcov = curve_fit(quadratic, x, y)
         x = laneright[0:lanerightcount, 1]
@@ -304,22 +307,16 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
             prevpoint = (x,y)
 
         # offset computed from curve fit at scan start location
-        rightx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2]) - xsize/2
         # angle computed from tangent of curve fit at scan start location
         slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
         rads = np.arctan(slope)
-        rightangle = rads/np.pi*180 + 180
+        rightangle = rads/np.pi*180
 
+        goodcheck &= ~0x01
 
     # the idea now is to use the curve fit at scan point to find both the lane offsets, and tangents as angle offsets
     # what happens if we dont' have enough points? well currently, we just use the old value
-
-        # angle detection of the right lane!
-        a = laneright[0]
-        b = laneright[1]
-        imagine = (a[0]-b[0]) + 1j*(a[1] - b[1])
-        rightangle = np.angle(imagine, deg=True)
-        rightx = laneright[0][0] - xsize/2
 
     cv2.imshow('frame', frame)
     #cv2.imshow('left', leftblob)
@@ -340,29 +337,35 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
     proc_post_time = (time.time() - start_post_time)*1000
     
-    distance = tof.get_distance()
-
+    # distance = tof.get_distance()
+    distance = 0
     #offset error in pixels from center screen +means turn left to correct
     offseterror = leftx - rightx 
     offset_adj = PIDoffset.update_error(offseterror);
     #angle error in degrees from vertical +means turn left to correct
-    angleerror = ((leftangle + rightangle)/2)-90
+    angleerror = ((leftangle + rightangle)/2)
     angle_adj = PIDangle.update_error(angleerror);
 
-    servocmd = servo_center + offset_adj + angle_adj
+    servocmd = servo_center + angle_adj + offset_adj
     # servocmd = 132 - int(((leftangle + rightangle)/2)-90)*3 + int(offset/2)
 
     if servocmd > 255:
         servocmd = 255
-    else if servocmd < 0:
+    elif servocmd < 0:
         servocmd = 0
-    
+    servocmd = int(servocmd)
+
+    pathfindershield.motorservoledcmd(goodcheck)
+
+    # servocmd value 255 is full left; 0 is full right
     if output:
         if distance < stopdistance:
             pathfindershield.motorservocmd4(50,1,0,132)
         else:
-            pathfindershield.motorservocmd4(0, 0, 0, angle)
-
+            pathfindershield.motorservocmd4(80, 0, 0, servocmd)
+    else:
+        pathfindershield.motorservocmd4(0, 0, 0, servocmd)
+        
     proc_time = (time.time() - start_time)*1000
     if smooth_time == 0:
         smooth_time = proc_time

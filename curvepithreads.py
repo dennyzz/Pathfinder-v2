@@ -44,8 +44,9 @@ def exponential(x, a, b):
     return a**x + b
 
 
-def Thread_Capture(cap, buffer, flag, buff_lock):
+def Thread_Capture(buffer, flag, buff_lock):
     global exit, res_x, res_y
+    proc_time_s = 0
     camera = PiCamera()
     camera.resolution = (res_x, res_y)
     camera.framerate = 30
@@ -53,40 +54,58 @@ def Thread_Capture(cap, buffer, flag, buff_lock):
 
     # allow the camera to warmup
     time.sleep(0.1)
-
+    # start_cap_time = time.time()
     for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True, resize=(res_x, res_y)):
-        frame = frame.array
-
         buff_lock.acquire()
-        buffer[:] = frame
+        buffer[:] = frame.array
         buff_lock.release()
-        
-        flag.set()
+    
         rawCapture.truncate(0)
+        flag.set()
         if exit:
             break
-            
+        # proc_time = (time.time() - start_cap_time)*1000
+        # if proc_time_s == 0:
+        #     proc_time_s = proc_time
+        # else:
+        #     proc_time_s = 0.9*proc_time_s + 0.1*proc_time
+        # fps_calc = 1000/proc_time_s
+        # sys.stdout.write("\rtime:%dmS, fps:%d       " % (proc_time, fps_calc))
+        # sys.stdout.flush()
+        # start_cap_time = time.time()
+    print("Capture Thread Terminated")
 
 
-def Thread_Distance():
+def Thread_Distance(flag, hola):
     # initialize the VL53L0x
+    # proc_time_s = 0
+    tof = VL53L0X.VL53L0X()
+    tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+    # start_cap_time = time.time()
     while not exit:
-        tof = VL53L0X.VL53L0X()
-        tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
         distance = tof.get_distance()
+        flag.set()
+        # proc_time = (time.time() - start_cap_time)*1000
+        # if proc_time_s == 0:
+        #     proc_time_s = proc_time
+        # else:
+        #     proc_time_s = 0.9*proc_time_s + 0.1*proc_time
+        # fps_calc = 1000/proc_time_s
+        # sys.stdout.write("\rtime:%dmS, fps:%d dist:%d     " % (proc_time, fps_calc, distance))
+        # sys.stdout.flush()
+        # start_cap_time = time.time()
+    print("Distance Thread Terminated")
 
 
-
-
-def Thread_Capture(buffer, flag, out_flag, buff_lock):
+def Thread_Process(buffer, flag, out_flag, buff_lock):
     global exit, res_x, res_y
     w = 1/20
     b = -1/20
-    frame = np.empty((y_res, x_res, 3), dtype=np.uint8)
-    smooth_time = 0
-    proc_algo_time_s = 0
-    proc_post_time_s = 0
-    proc_pre_time_s = 0
+    frame = np.empty((res_y, res_x, 3), dtype=np.uint8)
+    # smooth_time = 0
+    # proc_algo_time_s = 0
+    # proc_post_time_s = 0
+    # proc_pre_time_s = 0
     block_5_left = np.array([
     [b,b,b,b,b],
     [b,b,b,b,w], 
@@ -180,18 +199,19 @@ def Thread_Capture(buffer, flag, out_flag, buff_lock):
 
     while not exit:
         flag.wait()
+        flag.clear()
         buff_lock.acquire()
-        print("process buffer locked")
+        #print("process buffer locked")
         frame[:] = buffer
         buff_lock.release()
-        print("process buffer unlocked")
+        #print("process buffer unlocked")
 
         # step1: grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
         # step2: define top left corner of starting scan block
-        L_index = [scanoffset, ysize - scanstartline]
-        R_index = [xsize - scanwidth - scanoffset, ysize - scanstartline]
+        L_index = [scanstartoffset, ysize - scanstartline]
+        R_index = [xsize - scanwidth - scanstartoffset, ysize - scanstartline]
 
         # reset some parameters
         leftblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
@@ -202,8 +222,8 @@ def Thread_Capture(buffer, flag, out_flag, buff_lock):
         lanerightcount = 0
 
         # begin algo timing
-        proc_pre_time = (time.time() - start_pre_time) * 1000
-        start_algo_time = time.time()
+        # proc_pre_time = (time.time() - start_pre_time) * 1000
+        # start_algo_time = time.time()
     ####### main process loop
         # for loop controls how many blocks vertically are checked
         for x in range(0,scanlines):
@@ -269,7 +289,6 @@ def Thread_Capture(buffer, flag, out_flag, buff_lock):
                 if right[idxr] < threshold:
                     cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 1)
                     scanwidthr = scanwidth
-                    # print("right BAD")
                     R_index = [R_index[0], R_index[1] - scanspacing - scanheight]    
                 else:
                     laneright[lanerightcount] = idxrf
@@ -282,9 +301,7 @@ def Thread_Capture(buffer, flag, out_flag, buff_lock):
                     L_index[0] = 0
                 if R_index[0] > xsize-scanwidthr:
                     R_index[0] = xsize-scanwidthr
-        proc_algo_time = (time.time() - start_algo_time)*1000
         ####### end processing
-        start_post_time = time.time()
         
         leftblob = np.multiply(leftblob, 0.1)
         rightblob = np.multiply(rightblob, 0.1)
@@ -309,7 +326,6 @@ def Thread_Capture(buffer, flag, out_flag, buff_lock):
             rads = np.arctan(slope)
             leftangle = rads/np.pi*180 + 180
         if(lanerightcount > min_data_good):
-            # popt, pcov = curve_fit(quadratic, x, y)
             x = laneright[0:lanerightcount, 1]
             y = laneright[0:lanerightcount, 0]
             popt, pcov = curve_fit(quadratic, x, y)
@@ -331,8 +347,8 @@ def Thread_Capture(buffer, flag, out_flag, buff_lock):
 
         out_flag.set()
         cv2.imshow('frame', frame)
-        #cv2.imshow('left', leftblob)
-        #cv2.imshow('right', rightblob)
+        # cv2.imshow('left', leftblob)
+        # cv2.imshow('right', rightblob)
 
         key = cv2.waitKey(1) & 0xFF
 
@@ -341,12 +357,11 @@ def Thread_Capture(buffer, flag, out_flag, buff_lock):
             print("next")
             next = 1
         if key == ord("q"):
+            exit = 1
+            output_ready.set() # allow the main loop to proceed to exit
             break
-        
-        sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg cmdangle:%d mm:%d       " % (smooth_time, fps_calc, offset_adj, leftangle, rightangle, angle_adj, distance))
-        sys.stdout.flush()
-        #time it from here
-        start_time = time.time()
+
+    print("Process Thread Terminated")
 
 
 
@@ -357,8 +372,10 @@ def Thread_Capture(buffer, flag, out_flag, buff_lock):
 
 
 # main is the output task!
-PIDoffset = PID(2.0, 0.0, 1.0)
-PIDangle = PID(2.0, 0.0, 1.0)
+proc_time_s = 0
+
+PIDoffset = PID.PID(2.0, 0.0, 1.0)
+PIDangle = PID.PID(2.0, 0.0, 1.0)
 
 img_buf = np.empty((res_y, res_x, 3), dtype=np.uint8)
 
@@ -366,71 +383,58 @@ image_ready = threading.Event()
 distance_ready = threading.Event()
 output_ready = threading.Event()
 image_buffer_lock = threading.Lock()
-
+hi = 0
 
 # start threads
-Capture_Thread = threading.Thread(target=Thread_Capture, args=(cap, img_buf, image_ready, image_buffer_lock))
-Process_Thread = threading.Thread(target=Thread_Process, args=(img_buf, image_ready, distance_ready image_buffer_lock))
-Distance_Thread = threading.Thread(target=Thread_Distance, args=(distance_ready))
+Capture_Thread = threading.Thread(target=Thread_Capture, args=(img_buf, image_ready, image_buffer_lock))
+Process_Thread = threading.Thread(target=Thread_Process, args=(img_buf, image_ready, output_ready, image_buffer_lock))
+Distance_Thread = threading.Thread(target=Thread_Distance, args=(distance_ready, hi))
 print("threads created")
 
 Process_Thread.start()
 Capture_Thread.start()
-# Distance_Thread.start()
+Distance_Thread.start()
 print("threads started")
 start_time = time.time()
-while True:
-
+while not exit:
     output_ready.wait()
+    output_ready.clear()
     #offset error in pixels from center screen +means turn left to correct
-    offseterror = leftx - rightx 
-    offset_adj = PIDoffset.update_error(offseterror);
+    # offseterror = leftx - rightx 
+    # offset_adj = PIDoffset.update_error(offseterror);
     #angle error in degrees from vertical +means turn left to correct
-    angleerror = ((leftangle + rightangle)/2)-90
-    angle_adj = PIDangle.update_error(angleerror);
+    # angleerror = ((leftangle + rightangle)/2)-90
+    # angle_adj = PIDangle.update_error(angleerror);
 
-    servocmd = servo_center + offset_adj + angle_adj
+    # servocmd = servo_center + offset_adj + angle_adj
     # servocmd = 132 - int(((leftangle + rightangle)/2)-90)*3 + int(offset/2)
 
-    if servocmd > 255:
-        servocmd = 255
-    else if servocmd < 0:
-        servocmd = 0
+    #if servocmd > 255:
+    #    servocmd = 255
+    #elif servocmd < 0:
+    #    servocmd = 0
     
-    if output:
-        if distance < stopdistance:
-            pathfindershield.motorservocmd4(50,1,0,132)
-        else:
-            pathfindershield.motorservocmd4(0, 0, 0, angle)
+    #if output:
+    #    if distance < stopdistance:
+    #        pathfindershield.motorservocmd4(50,1,0,132)
+    #    else:
+    #        pathfindershield.motorservocmd4(0, 0, 0, angle)
 
-    proc_time = (time.time() - start_time)*1000
-    if smooth_time == 0:
-        smooth_time = proc_time
-    else:
-        smooth_time = 0.9*smooth_time + 0.1*proc_time
 
 
 
 
     proc_time = (time.time() - start_time)*1000
-    if smooth_time == 0:
-        smooth_time = proc_time
+    if proc_time_s == 0:
+        proc_time_s = proc_time
     else:
-        smooth_time = 0.9*smooth_time + 0.1*proc_time
-
-    fps_calc = int(1000/smooth_time)
+        proc_time_s = 0.9*proc_time_s + 0.1*proc_time
+    fps_calc = int(1000/proc_time_s)
     # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg angle:%d      " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle))
-    sys.stdout.flush()
-    #time it from here
+    sys.stdout.write("\rtime:%dmS, fps:%d       " % (proc_time_s, fps_calc))
+    sys.stdout.flush()    
     start_time = time.time()
-    #if the `q` key was pressed, break from the loop
-    if key == ord("n"):
-        print("next")
-        next = 1
-    if key == ord("q"):
-        exit = 1
-        break
+    
 
 Process_Thread.join()
 Capture_Thread.join()
