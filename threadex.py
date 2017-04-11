@@ -1,63 +1,63 @@
-from threading import Thread
-import threading
-import time
+# from threading import Thread
+# import threading
+# import time
 
-global cycle
-cycle = 0.0
+# global cycle
+# cycle = 0.0
 
-class Hello5Program:  
-    def __init__(self):
-        self._running = True
+# class Hello5Program:  
+#     def __init__(self):
+#         self._running = True
 
-    def terminate(self):  
-        self._running = False  
+#     def terminate(self):  
+#         self._running = False  
 
-    def run(self):
-        global cycle
-        while self._running:
-            time.sleep(5) #Five second delay
-            cycle = cycle + 1.0
-            print( "5 Second Thread cycle+1.0 - ", cycle)
+#     def run(self):
+#         global cycle
+#         while self._running:
+#             time.sleep(5) #Five second delay
+#             cycle = cycle + 1.0
+#             print( "5 Second Thread cycle+1.0 - ", cycle)
 
-class Hello2Program:  
-    def __init__(self):
-        self._running = True
+# class Hello2Program:  
+#     def __init__(self):
+#         self._running = True
 
-    def terminate(self):  
-        self._running = False  
+#     def terminate(self):  
+#         self._running = False  
 
-    def run(self):
-        global cycle
-        while self._running:
-            time.sleep(2) #Five second delay
-            cycle = cycle + 0.5
-            print( "2 Second Thread cycle+0.5 - ", cycle)
+#     def run(self):
+#         global cycle
+#         while self._running:
+#             time.sleep(2) #Five second delay
+#             cycle = cycle + 0.5
+#             print( "2 Second Thread cycle+0.5 - ", cycle)
 
-#Create Class
-FiveSecond = Hello5Program()
-#Create Thread
-FiveSecondThread = Thread(target=FiveSecond.run) 
-#Start Thread 
-FiveSecondThread.start()
+# #Create Class
+# FiveSecond = Hello5Program()
+# #Create Thread
+# FiveSecondThread = Thread(target=FiveSecond.run) 
+# #Start Thread 
+# FiveSecondThread.start()
 
-#Create Class
-TwoSecond = Hello2Program()
-#Create Thread
-TwoSecondThread = Thread(target=TwoSecond.run) 
-#Start Thread 
-TwoSecondThread.start()
+# #Create Class
+# TwoSecond = Hello2Program()
+# #Create Thread
+# TwoSecondThread = Thread(target=TwoSecond.run) 
+# #Start Thread 
+# TwoSecondThread.start()
 
 
-Exit = False #Exit flag
-while Exit==False:
- cycle = cycle + 0.1 
- print ("Main Program increases cycle+0.1 - ", cycle)
- time.sleep(1) #One second delay
- if (cycle > 5): Exit = True #Exit Program
+# Exit = False #Exit flag
+# while Exit==False:
+#  cycle = cycle + 0.1 
+#  print ("Main Program increases cycle+0.1 - ", cycle)
+#  time.sleep(1) #One second delay
+#  if (cycle > 5): Exit = True #Exit Program
 
-TwoSecond.terminate()
-FiveSecond.terminate()
-print ("Goodbye :)")
+# TwoSecond.terminate()
+# FiveSecond.terminate()
+# print ("Goodbye :)")
 
 
 # Instructions!
@@ -77,6 +77,10 @@ import os
 import scipy.signal
 import sys
 from scipy.optimize import curve_fit
+from threading import Thread
+import threading
+
+exit = 0
 
 def quadratic(x, a, b, c):
     return a * x * x + b * x + c
@@ -110,31 +114,34 @@ def intersection(L1, L2):
     else:
         return False
 
-def Thread_Cap(cap):
+def Thread_Cap(cap, buffer, flag, buff_lock):
     global exit
-    while !exit:
-    # cap = cv2.VideoCapture("footage/radius2angle75.mp4")
+    while not exit:
+        ret, frame = cap.read()
+        buff_lock.acquire()
+        # print("capture buffer locked")
+        buffer[:] = frame
+        # print(buffer)
+        buff_lock.release()
+        # print("capture buffer unlocked")
+        # clear the stream in preparation for the next frame
+        # rawCapture.truncate(0)
+        flag.set()
+        if not ret:
+            exit = 1
+            break
 
-    # cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
-    # fps = cap.get(cv2.CAP_PROP_FPS)
-    ret, frame = cap.read()
-    if !ret:
-        exit = 1
-        break
+    cap.release()
 
-
-def Thread_Process():
+def Thread_Process(buffer, flag, buff_lock):
     global exit
     w = 1/200
     b = -1/200
-    smooth_time = 0
-    proc_algo_time_s = 0
-    proc_post_time_s = 0
-    proc_pre_time_s = 0
 
-    ysize = temp.shape[0]
-    xsize = temp.shape[1]
+    ysize = buffer.shape[0]
+    xsize = buffer.shape[1]
 
+    frame = np.empty((ysize, xsize, 3), dtype=np.uint8)
     block_15_left = np.array([
     [b,b,b,b,b,b,b,b,b,b,b,b,b,b,b],
     [b,b,b,b,b,b,b,b,b,b,b,b,b,b,w],
@@ -238,8 +245,15 @@ def Thread_Process():
     rightangle = 0
     leftx = xsize/2
     rightx = xsize/2
-    while !exit:
-        start_pre_time = time.time()
+    while not exit:
+        flag.wait()
+        buff_lock.acquire()
+        print("process buffer locked")
+        # print(buffer)
+        frame[:] = buffer
+        buff_lock.release()
+        print("process buffer unlocked")
+        # start_pre_time = time.time()
         # step1: grayscale
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
@@ -257,9 +271,9 @@ def Thread_Process():
 
         # begin algo timing
 
-        proc_pre_time = (time.time() - start_pre_time) * 1000
+        # proc_pre_time = (time.time() - start_pre_time) * 1000
 
-        start_algo_time = time.time()
+        # start_algo_time = time.time()
     ####### main process loop
         # for loop controls how many blocks vertically are checked
         for x in range(0,scanlines):
@@ -345,7 +359,7 @@ def Thread_Process():
                     R_index[0] = xsize-scanwidthr
 
         ####### end processing
-        proc_algo_time = (time.time() - start_algo_time)*1000
+        # proc_algo_time = (time.time() - start_algo_time)*1000
         ####### end processing
 
 
@@ -354,7 +368,7 @@ def Thread_Process():
         leftblob = np.multiply(leftblob, 0.1)
         rightblob = np.multiply(rightblob, 0.1)
 
-        start_post_time = time.time()
+        # start_post_time = time.time()
 
         if(laneleftcount > min_data_good):
             # flip the axes to get a real function
@@ -396,7 +410,7 @@ def Thread_Process():
 
         offset = leftx - rightx 
         angle = ((rightangle + leftangle)/2)
-        proc_post_time = (time.time() - start_post_time)*1000
+        # proc_post_time = (time.time() - start_post_time)*1000
 
         cv2.imshow('frame', frame)
         cv2.imshow('left', leftblob)
@@ -412,51 +426,57 @@ def Thread_Process():
 
 
 # main is the output task!
+cap = cv2.VideoCapture("footage/0degree.mp4 ")
+# cap = cv2.VideoCapture("footage/radius2angle75.mp4")
+# cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
+
 blah, temp = cap.read()
 ysize = temp.shape[0]
 xsize = temp.shape[1]
-img_buf = np.empty()
-exit = 0
+img_buf = np.empty((ysize, xsize, 3), dtype=np.uint8)
+
 image_ready = threading.Event()
 distance_ready = threading.Event()
 image_buffer_lock = threading.Lock()
 
-cap = cv2.VideoCapture("footage/0degree.mp4 ")
-
 
 # start threads
-Process_Thread = threading.Thread(target = Thread_Process)
-Capture_Thread = threading.Thread(target = Thread_Cap, args=(cap))
+Process_Thread = threading.Thread(target=Thread_Process, args=(img_buf, image_ready, image_buffer_lock))
+Capture_Thread = threading.Thread(target=Thread_Cap, args=(cap, img_buf, image_ready, image_buffer_lock))
 Distance_Thread = threading.Thread()
+print("threads created")
 
-
+Process_Thread.start()
+Capture_Thread.start()
+print("threads started")
+# start_time = time.time()
 while True:
 
     image_ready.wait()
-    proc_time = (time.time() - start_time)*1000
-    if smooth_time == 0:
-        smooth_time = proc_time
-    else:
-        smooth_time = 0.9*smooth_time + 0.1*proc_time
+    # # proc_time = (time.time() - start_time)*1000
+    # if smooth_time == 0:
+    #     smooth_time = proc_time
+    # else:
+    #     smooth_time = 0.9*smooth_time + 0.1*proc_time
         
-    if proc_algo_time_s == 0:
-        proc_algo_time_s = proc_algo_time
-    else:
-        proc_algo_time_s = 0.9*proc_algo_time_s + 0.1*proc_algo_time
+    # if proc_algo_time_s == 0:
+    #     proc_algo_time_s = proc_algo_time
+    # else:
+    #     proc_algo_time_s = 0.9*proc_algo_time_s + 0.1*proc_algo_time
         
-    if proc_post_time_s == 0:
-        proc_post_time_s = proc_post_time
-    else:
-        proc_post_time_s = 0.9*proc_post_time_s + 0.1*proc_post_time
+    # if proc_post_time_s == 0:
+    #     proc_post_time_s = proc_post_time
+    # else:
+    #     proc_post_time_s = 0.9*proc_post_time_s + 0.1*proc_post_time
         
-    if proc_pre_time_s == 0:
-        proc_pre_time_s = proc_pre_time
-    else:
-        proc_pre_time_s = 0.9*proc_pre_time_s + 0.1*proc_pre_time
+    # if proc_pre_time_s == 0:
+    #     proc_pre_time_s = proc_pre_time
+    # else:
+    #     proc_pre_time_s = 0.9*proc_pre_time_s + 0.1*proc_pre_time
         
-    fps_calc = int(1000/smooth_time)
+    # fps_calc = int(1000/smooth_time)
     # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg angle:%d      " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle))
+    # sys.stdout.write("\rtime:%dmS, fps:%d off: %d left:%.1fdeg right:%.1fdeg angle:%d      " % (smooth_time, fps_calc, offset, leftangle, rightangle, angle))
     sys.stdout.flush()
     #time it from here
     start_time = time.time()
@@ -468,7 +488,11 @@ while True:
         exit = 1
         break
 
-cap.release()
+Process_Thread.join()
+Capture_Thread.join()
+
+print("threads ended, exited normally")
+
 sys.exit(0)
 
 
