@@ -9,7 +9,7 @@ angle = []
 offpid = []
 anglepid = []
 output = []
-with open('logp05d1.csv', 'rt') as csvfile:
+with open('log.csv', 'rt') as csvfile:
 	logreader = csv.reader(csvfile, delimiter=',', quotechar='|')
 	next(logreader)
 	next(logreader)

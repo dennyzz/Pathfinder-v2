@@ -341,7 +341,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             # offset computed from curve fit at scan start location
             leftx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
             # angle computed from tangent of curve fit at scan start location
-            slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+            slope = d_quadratic(ysize-scanstartline-30, popt[0], popt[1], popt[2])
             rads = np.arctan(slope)
             leftangle = rads/np.pi*180
 
@@ -363,7 +363,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             # offset computed from curve fit at scan start location
             rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2]) - xsize/2
             # angle computed from tangent of curve fit at scan start location
-            slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+            slope = d_quadratic(ysize-scanstartline-30, popt[0], popt[1], popt[2])
             rads = np.arctan(slope)
             rightangle = rads/np.pi*180
 
@@ -408,7 +408,7 @@ f.write("time, t_taken, offerror, angleerror, offsetpid, anglepid, output\r\n")
 
 proc_time_s = 0
 
-PIDoffset = PID.PID(1.0, 0.0, 1.0)
+PIDoffset = PID.PID(0.4, 0.0, 1.0)
 PIDangle = PID.PID(1.0, 0.0, 1.0)
 
 img_buf = np.empty((res_y, res_x, 3), dtype=np.uint8)
@@ -456,7 +456,7 @@ while not exit:
            pathfindershield.motorservocmd4(0,0,1,servo_center)
            leds |= 0xFF
        else:
-           pathfindershield.motorservocmd4(55, 0, 0, servocmd)
+           pathfindershield.motorservocmd4(65, 0, 0, servocmd)
 
     pathfindershield.motorservoledcmd(leds)
 
