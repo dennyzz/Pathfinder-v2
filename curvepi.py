@@ -92,7 +92,7 @@ xsize = res_x
 ysize = res_y
 
 # width of the initial scan block
-scanwidth = 100
+scanwidth = 110
 # width of the scan block when a valid point has been found previously (smaller)
 scanwidthmin = 30
 # height of the scan block
@@ -100,16 +100,16 @@ scanheight = 5
 # space between scan blocks
 scanspacing = 0
 # total number of scan lines vertically
-scanlines = 18
+scanlines = 15
 # offset pixels inwards (x) for the initial scan block
-scanstartoffset = 25
+scanstartoffset = 10
 # pixels from the bottom that the scanlines first index starts from
-scanstartline = 45
+scanstartline = 55
 # the threshold for detection for post correlation
 threshold = 1
 
 # turn off the output and drive commands
-output = 0
+output = 1
 
 # Distance for collision detection
 stopdistance = 0
@@ -119,8 +119,8 @@ servo_center = 132
 min_data_good = 6
 
 # def __init__(self, P=2.0, I=0.0, D=1.0, Derivator=0, Integrator=0, Integrator_max=500, Integrator_min=-500):
-PIDangle = PID.PID(1.0, 0, 0.5)
-PIDoffset = PID.PID(1.0, 0, 0.5)
+PIDangle = PID.PID(1.0, 0.0, 1.0)
+PIDoffset = PID.PID(1.0, 0.0, 1.0)
 
 
 ### END GLOBAL TUNING PARAMETERS ###
@@ -153,7 +153,7 @@ rawCapture = PiRGBArray(camera, size=(res_x, res_y))
 time.sleep(0.1)
 
 # initialize the VL53L0x
-tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+tof.start_ranging(VL53L0X.VL53L0X_GOOD_ACCURACY_MODE)
 
 start_time = time.time()
 # capture frames from the camera
@@ -176,8 +176,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     R_index = [xsize - scanwidth - scanstartoffset, ysize - scanstartline]
 
     # reset some parameters
-    leftblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
-    rightblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
+    #leftblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
+    #rightblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
     scanwidthl = scanwidth
     scanwidthr = scanwidth
     laneleftcount = 0
@@ -209,8 +209,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         # f.write('leftmax:' + str(np.max(left)) + ' ' + str(np.min(left)) + '\n')
         # f.write('rightmax:' + str(np.max(right)) + ' ' + str(np.min(right)) + '\n')
         # copy for visualization
-        np.copyto(leftblob[(scanlines-x-1)*15:(scanlines-x)*15, 0:left.shape[0]], left)
-        np.copyto(rightblob[(scanlines-x-1)*15:(scanlines-x)*15, 0:right.shape[0]], right)
+        # np.copyto(leftblob[(scanlines-x-1)*15:(scanlines-x)*15, 0:left.shape[0]], left)
+        # np.copyto(rightblob[(scanlines-x-1)*15:(scanlines-x)*15, 0:right.shape[0]], right)
 
         # so idxL/R is the index of the max thing, or the best boundary location as an x offset from the scan box width
         # idxLRf is the location of the box in the frame
@@ -268,8 +268,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     ####### end processing
     start_post_time = time.time()
     
-    leftblob = np.multiply(leftblob, 0.1)
-    rightblob = np.multiply(rightblob, 0.1)
+    # leftblob = np.multiply(leftblob, 0.1)
+    # rightblob = np.multiply(rightblob, 0.1)
 
     goodcheck = 0x31
     if(laneleftcount > min_data_good):
@@ -337,8 +337,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
     proc_post_time = (time.time() - start_post_time)*1000
     
-    # distance = tof.get_distance()
-    distance = 0
+    distance = tof.get_distance()
+    
     #offset error in pixels from center screen +means turn left to correct
     offseterror = leftx - rightx 
     offset_adj = PIDoffset.update_error(offseterror);
@@ -360,9 +360,9 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     # servocmd value 255 is full left; 0 is full right
     if output:
         if distance < stopdistance:
-            pathfindershield.motorservocmd4(50,1,0,132)
+            pathfindershield.motorservocmd4(0,0,1,132)
         else:
-            pathfindershield.motorservocmd4(80, 0, 0, servocmd)
+            pathfindershield.motorservocmd4(55, 0, 0, servocmd)
     else:
         pathfindershield.motorservocmd4(0, 0, 0, servocmd)
         
@@ -395,5 +395,4 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
     start_time = time.time()
 
 
-cap.release()
 sys.exit(0)

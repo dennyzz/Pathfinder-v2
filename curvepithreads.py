@@ -78,22 +78,22 @@ def Thread_Capture(buffer, flag, buff_lock):
 
 def Thread_Distance(flag, hola):
     # initialize the VL53L0x
-    # proc_time_s = 0
+    proc_time_s = 0
     tof = VL53L0X.VL53L0X()
     tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
-    # start_cap_time = time.time()
+    start_cap_time = time.time()
     while not exit:
         distance = tof.get_distance()
         flag.set()
-        # proc_time = (time.time() - start_cap_time)*1000
-        # if proc_time_s == 0:
-        #     proc_time_s = proc_time
-        # else:
-        #     proc_time_s = 0.9*proc_time_s + 0.1*proc_time
-        # fps_calc = 1000/proc_time_s
-        # sys.stdout.write("\rtime:%dmS, fps:%d dist:%d     " % (proc_time, fps_calc, distance))
-        # sys.stdout.flush()
-        # start_cap_time = time.time()
+        proc_time = (time.time() - start_cap_time)*1000
+        if proc_time_s == 0:
+            proc_time_s = proc_time
+        else:
+            proc_time_s = 0.9*proc_time_s + 0.1*proc_time
+        fps_calc = 1000/proc_time_s
+        sys.stdout.write("\rtime:%dmS, fps:%d dist:%d     " % (proc_time, fps_calc, distance))
+        sys.stdout.flush()
+        start_cap_time = time.time()
     print("Distance Thread Terminated")
 
 
@@ -157,7 +157,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock):
     # space between scan blocks
     scanspacing = 0
     # total number of scan lines vertically
-    scanlines = 18
+    scanlines = 15
     # offset pixels inwards (x) for the initial scan block
     scanstartoffset = 25
     # pixels from the bottom that the scanlines first index starts from
@@ -424,16 +424,16 @@ while not exit:
 
 
 
-    proc_time = (time.time() - start_time)*1000
-    if proc_time_s == 0:
-        proc_time_s = proc_time
-    else:
-        proc_time_s = 0.9*proc_time_s + 0.1*proc_time
-    fps_calc = int(1000/proc_time_s)
+    # proc_time = (time.time() - start_time)*1000
+    # if proc_time_s == 0:
+    #     proc_time_s = proc_time
+    # else:
+    #     proc_time_s = 0.9*proc_time_s + 0.1*proc_time
+    # fps_calc = int(1000/proc_time_s)
     # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    sys.stdout.write("\rtime:%dmS, fps:%d       " % (proc_time_s, fps_calc))
-    sys.stdout.flush()    
-    start_time = time.time()
+    # sys.stdout.write("\rtime:%dmS, fps:%d       " % (proc_time_s, fps_calc))
+    # sys.stdout.flush()    
+    # start_time = time.time()
     
 
 Process_Thread.join()
