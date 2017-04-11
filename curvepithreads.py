@@ -176,7 +176,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     scanstartline = 50
     # scan angle distance is the distance from scanstartline that we take our angle measurement from. 
     # this gives us some amount of "predictive" driving allowing us to see the curve ahead a bit
-    scanangledistance = 50
+    scanangledistance = 40
     # the threshold for detection for post correlation
     threshold = 1
     # value for minimum number of good edges detected for curve fitting 
@@ -411,8 +411,8 @@ f.write("time, t_taken, offerror, angleerror, offsetpid, anglepid, output\r\n")
 
 proc_time_s = 0
 
-PIDoffset = PID.PID(0.4, 0.0, 1.0)
-PIDangle = PID.PID(1.0, 0.0, 1.0)
+PIDoffset = PID.PID(0.35, 0.0, 1.0)
+PIDangle = PID.PID(1.5, 0.0, 1.0)
 
 img_buf = np.empty((res_y, res_x, 3), dtype=np.uint8)
 
@@ -459,7 +459,7 @@ while not exit:
            pathfindershield.motorservocmd4(0,0,1,servo_center)
            leds |= 0xFF
        else:
-           pathfindershield.motorservocmd4(55, 0, 0, servocmd)
+           pathfindershield.motorservocmd4(65, 0, 0, servocmd)
 
     pathfindershield.motorservoledcmd(leds)
 
