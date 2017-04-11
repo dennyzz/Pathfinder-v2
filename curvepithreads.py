@@ -174,6 +174,9 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     scanstartoffset = 15
     # pixels from the bottom that the scanlines first index starts from
     scanstartline = 50
+    # scan angle distance is the distance from scanstartline that we take our angle measurement from. 
+    # this gives us some amount of "predictive" driving allowing us to see the curve ahead a bit
+    scanangledistance = 50
     # the threshold for detection for post correlation
     threshold = 1
     # value for minimum number of good edges detected for curve fitting 
@@ -341,7 +344,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             # offset computed from curve fit at scan start location
             leftx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
             # angle computed from tangent of curve fit at scan start location
-            slope = d_quadratic(ysize-scanstartline-30, popt[0], popt[1], popt[2])
+            slope = d_quadratic(ysize-scanstartline-scanangledistance, popt[0], popt[1], popt[2])
             rads = np.arctan(slope)
             leftangle = rads/np.pi*180
 
@@ -363,7 +366,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             # offset computed from curve fit at scan start location
             rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2]) - xsize/2
             # angle computed from tangent of curve fit at scan start location
-            slope = d_quadratic(ysize-scanstartline-30, popt[0], popt[1], popt[2])
+            slope = d_quadratic(ysize-scanstartline-scanangledistance, popt[0], popt[1], popt[2])
             rads = np.arctan(slope)
             rightangle = rads/np.pi*180
 
