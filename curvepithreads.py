@@ -311,13 +311,13 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                     # R_index = [idxrf[0] - int(scanwidthr/2) + int(delta/2), idxrf[1] - halfblock - scanspacing - scanheight]
                     R_index = [idxrf[0] - int(scanwidthr/2) + delta, idxrf[1] - halfblock - scanspacing - scanheight]
 
-                if L_index[0] > xsize-scanwidthr:
-                    L_index[0] = xsize-scanwidthr
                 if L_index[0] < 0:
                     L_index[0] = 0
+                elif L_index[0] > xsize-scanwidthr:
+                    L_index[0] = xsize-scanwidthr
                 if R_index[0] > xsize-scanwidthr:
                     R_index[0] = xsize-scanwidthr
-                if R_index[0] < 0:
+                elif R_index[0] < 0:
                     R_index[0] = 0
         ####### end processing
         
@@ -325,6 +325,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         # rightblob = np.multiply(rightblob, 0.1)
 
 
+        goodcheck = 0x31
         if(laneleftcount > min_data_good):
             # flip the axes to get a real function
             x = laneleft[0:laneleftcount, 1]
@@ -342,8 +343,12 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             # angle computed from tangent of curve fit at scan start location
             slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
             rads = np.arctan(slope)
-            leftangle = rads/np.pi*180 + 180
+            leftangle = rads/np.pi*180
+
+            goodcheck &= ~0x01
+            
         if(lanerightcount > min_data_good):
+            # popt, pcov = curve_fit(quadratic, x, y)
             x = laneright[0:lanerightcount, 1]
             y = laneright[0:lanerightcount, 0]
             popt, pcov = curve_fit(quadratic, x, y)
@@ -356,14 +361,16 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                 prevpoint = (x,y)
 
             # offset computed from curve fit at scan start location
-            rightx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+            rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2]) - xsize/2
             # angle computed from tangent of curve fit at scan start location
             slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
             rads = np.arctan(slope)
             rightangle = rads/np.pi*180
+
+            goodcheck &= ~0x10
         
         offseterror = leftx - rightx 
-        angleerror = ((leftangle + rightangle)/2)-90
+        angleerror = ((leftangle + rightangle)/2)
 
         outlist[0] = offseterror
         outlist[1] = angleerror

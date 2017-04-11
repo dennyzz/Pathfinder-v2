@@ -273,8 +273,12 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
             if L_index[0] < 0:
                 L_index[0] = 0
+            elif L_index[0] > xsize-scanwidthr:
+                L_index[0] = xsize-scanwidthr
             if R_index[0] > xsize-scanwidthr:
                 R_index[0] = xsize-scanwidthr
+            elif R_index[0] < 0:
+                R_index[0] = 0
     proc_algo_time = (time.time() - start_algo_time)*1000
     ####### end processing
     start_post_time = time.time()
