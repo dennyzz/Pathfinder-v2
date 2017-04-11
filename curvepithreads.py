@@ -28,6 +28,17 @@ res_y = 240
 xsize = res_x
 ysize = res_y
 
+
+# TUNING PARAMETERS FOR OUTPUT STAGE
+
+# turn off the output and drive commands
+output = 1
+# Distance for collision detection
+stopdistance = 200
+# Servo value for approximate middle value
+servo_center = 132
+
+
 def quadratic(x, a, b, c):
     return a*x**2 + b*x + c
 
@@ -76,7 +87,7 @@ def Thread_Capture(buffer, flag, buff_lock):
     print("Capture Thread Terminated")
 
 
-def Thread_Distance(flag, hola):
+def Thread_Distance(flag, ret):
     # initialize the VL53L0x
     proc_time_s = 0
     tof = VL53L0X.VL53L0X()
@@ -84,16 +95,17 @@ def Thread_Distance(flag, hola):
     start_cap_time = time.time()
     while not exit:
         distance = tof.get_distance()
+        ret[0] = distance
         flag.set()
-        proc_time = (time.time() - start_cap_time)*1000
-        if proc_time_s == 0:
-            proc_time_s = proc_time
-        else:
-            proc_time_s = 0.9*proc_time_s + 0.1*proc_time
-        fps_calc = 1000/proc_time_s
-        sys.stdout.write("\rtime:%dmS, fps:%d dist:%d     " % (proc_time, fps_calc, distance))
-        sys.stdout.flush()
-        start_cap_time = time.time()
+        # proc_time = (time.time() - start_cap_time)*1000
+        # if proc_time_s == 0:
+        #     proc_time_s = proc_time
+        # else:
+        #     proc_time_s = 0.9*proc_time_s + 0.1*proc_time
+        # fps_calc = 1000/proc_time_s
+        # sys.stdout.write("\rtime:%dmS, fps:%d dist:%d     " % (proc_time, fps_calc, distance))
+        # sys.stdout.flush()
+        # start_cap_time = time.time()
     print("Distance Thread Terminated")
 
 
@@ -164,18 +176,10 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     scanstartline = 45
     # the threshold for detection for post correlation
     threshold = 1
-
-    # turn off the output and drive commands
-    output = 0
-
-    # Distance for collision detection
-    stopdistance = 150
-    # Servo value for approximate middle value
-    servo_center = 132
     # value for minimum number of good edges detected for curve fitting 
     min_data_good = 6
 
-    ### END GLOBAL TUNING PARAMETERS ###
+    ### END PROCESS TUNING PARAMETERS ###
 
     # Colors!
     green = (0,255,0)
@@ -237,7 +241,6 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             # step4: run the correlation/eigenvalue/convolution thing
             left = scipy.signal.correlate2d(leftscan, block_left, mode='valid')[0]
             right = scipy.signal.correlate2d(rightscan, block_right, mode='valid')[0]
-
             # step 4.5 if it returns nothing of adequate similarity, try the reversed masks
             if max(left) < threshold:
                 left = scipy.signal.correlate2d(leftscan, block_left_flip, mode='valid')[0]
@@ -275,7 +278,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                     # if cannot find lane line
                     if scanwidthl == scanwidthmin: # if from good to failing
                         L_index[0] = int(L_index[0] - ((scanwidth - scanwidthmin) / 2))
-                    cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), yellow, 2)
+                    cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), yellow, 1)
                     scanwidthl = scanwidth
                     # print("left BAD")
                     L_index = [L_index[0], L_index[1] - scanspacing - scanheight]
@@ -308,10 +311,14 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                     # R_index = [idxrf[0] - int(scanwidthr/2) + int(delta/2), idxrf[1] - halfblock - scanspacing - scanheight]
                     R_index = [idxrf[0] - int(scanwidthr/2) + delta, idxrf[1] - halfblock - scanspacing - scanheight]
 
+                if L_index[0] > xsize-scanwidthr:
+                    L_index[0] = xsize-scanwidthr
                 if L_index[0] < 0:
                     L_index[0] = 0
                 if R_index[0] > xsize-scanwidthr:
                     R_index[0] = xsize-scanwidthr
+                if R_index[0] < 0:
+                    R_index[0] = 0
         ####### end processing
         
         # leftblob = np.multiply(leftblob, 0.1)
@@ -353,12 +360,13 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             # angle computed from tangent of curve fit at scan start location
             slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
             rads = np.arctan(slope)
-            rightangle = rads/np.pi*180 + 180
+            rightangle = rads/np.pi*180
         
         offseterror = leftx - rightx 
         angleerror = ((leftangle + rightangle)/2)-90
 
-        outlist = (offseterror, angleerror)
+        outlist[0] = offseterror
+        outlist[1] = angleerror
         out_flag.set()
 
         cv2.imshow('frame', frame)
@@ -383,14 +391,11 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
 
 
 
-
-
-
 # main is the output task!
 proc_time_s = 0
 
-PIDoffset = PID.PID(2.0, 0.0, 1.0)
-PIDangle = PID.PID(2.0, 0.0, 1.0)
+PIDoffset = PID.PID(1.0, 0.0, 1.0)
+PIDangle = PID.PID(1.0, 0.0, 1.0)
 
 img_buf = np.empty((res_y, res_x, 3), dtype=np.uint8)
 
@@ -398,12 +403,14 @@ image_ready = threading.Event()
 distance_ready = threading.Event()
 output_ready = threading.Event()
 image_buffer_lock = threading.Lock()
-hi = 0
-errorlist = (0,0)
+
+ret_dist = [2000]
+error_list = [0,0]
+
 # start threads
 Capture_Thread = threading.Thread(target=Thread_Capture, args=(img_buf, image_ready, image_buffer_lock))
 Process_Thread = threading.Thread(target=Thread_Process, args=(img_buf, image_ready, output_ready, image_buffer_lock, error_list))
-Distance_Thread = threading.Thread(target=Thread_Distance, args=(distance_ready, hi))
+Distance_Thread = threading.Thread(target=Thread_Distance, args=(distance_ready, ret_dist))
 print("threads created")
 
 Process_Thread.start()
@@ -414,8 +421,9 @@ start_time = time.time()
 while not exit:
     output_ready.wait()
     output_ready.clear()
-    offseterror = errorlist[0]
-    angleerror = errorlist[1]
+    print(error_list)
+    offseterror = error_list[0]
+    angleerror = error_list[1]
     #offset error in pixels from center screen +means turn left to correct
     offset_adj = PIDoffset.update_error(offseterror);
     #angle error in degrees from vertical +means turn left to correct
@@ -426,11 +434,14 @@ while not exit:
        servocmd = 255
     elif servocmd < 0:
        servocmd = 0
-    
+       
+    distance = ret_dist[0]
+
     if output:
        if distance < stopdistance:
            pathfindershield.motorservocmd4(0,0,1,servo_center)
        else:
+           print("send cmd")
            pathfindershield.motorservocmd4(55, 0, 0, servocmd)
 
     proc_time = (time.time() - start_time)*1000
@@ -439,8 +450,8 @@ while not exit:
     else:
         proc_time_s = 0.9*proc_time_s + 0.1*proc_time
     fps_calc = int(1000/proc_time_s)
-    sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    sys.stdout.write("\rtime:%dmS, fps:%d       " % (proc_time_s, fps_calc))
+    # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
+    sys.stdout.write("\rtime:%dmS,%dfps,d:%d       " % (proc_time_s, fps_calc, distance))
     sys.stdout.flush()    
     start_time = time.time()
     
@@ -449,7 +460,7 @@ Process_Thread.join()
 Capture_Thread.join()
 Distance_Thread.join()
 
-print("threads ended, exited normally")
+print("all threads terminated, exited normally")
 
 sys.exit(0)
 
