@@ -97,7 +97,7 @@ def Thread_Distance(flag, hola):
     print("Distance Thread Terminated")
 
 
-def Thread_Process(buffer, flag, out_flag, buff_lock):
+def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     global exit, res_x, res_y
     w = 1/20
     b = -1/20
@@ -214,8 +214,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock):
         R_index = [xsize - scanwidth - scanstartoffset, ysize - scanstartline]
 
         # reset some parameters
-        leftblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
-        rightblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
+        # leftblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
+        # rightblob = np.empty((scanlines*blocksize, scanwidth-blocksize+1))
         scanwidthl = scanwidth
         scanwidthr = scanwidth
         laneleftcount = 0
@@ -247,8 +247,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock):
             # f.write('leftmax:' + str(np.max(left)) + ' ' + str(np.min(left)) + '\n')
             # f.write('rightmax:' + str(np.max(right)) + ' ' + str(np.min(right)) + '\n')
             # copy for visualization
-            np.copyto(leftblob[(scanlines-x-1)*15:(scanlines-x)*15, 0:left.shape[0]], left)
-            np.copyto(rightblob[(scanlines-x-1)*15:(scanlines-x)*15, 0:right.shape[0]], right)
+            # np.copyto(leftblob[(scanlines-x-1)*15:(scanlines-x)*15, 0:left.shape[0]], left)
+            # np.copyto(rightblob[(scanlines-x-1)*15:(scanlines-x)*15, 0:right.shape[0]], right)
 
             # so idxL/R is the index of the max thing, or the best boundary location as an x offset from the scan box width
             # idxLRf is the location of the box in the frame
@@ -284,8 +284,13 @@ def Thread_Process(buffer, flag, out_flag, buff_lock):
                     laneleftcount += 1
                     cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), red, 1)
                     scanwidthl = scanwidthmin
-                    L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1] - halfblock - scanspacing - scanheight]
-
+                    # scanblock delta calculation for the steeper curves
+                    if laneleftcount >= 2:
+                        delta = laneleft[laneleftcount-1][0] - laneleft[laneleftcount-2][0]
+                    else:
+                        delta = 0
+                    # L_index = [idxlf[0] - int(scanwidthl/2) + int(delta/2), idxlf[1] - halfblock - scanspacing - scanheight]
+                    L_index = [idxlf[0] - int(scanwidthl/2) + delta, idxlf[1] - halfblock - scanspacing - scanheight]
                 if right[idxr] < threshold:
                     cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 1)
                     scanwidthr = scanwidth
@@ -295,7 +300,13 @@ def Thread_Process(buffer, flag, out_flag, buff_lock):
                     lanerightcount += 1
                     cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), blue, 1)
                     scanwidthr = scanwidthmin
-                    R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1] - halfblock - scanspacing - scanheight]
+                    # scanblock delta calculation for the steeper curves
+                    if lanerightcount >= 2:
+                        delta = laneright[lanerightcount-1][0] - laneright[lanerightcount-2][0]
+                    else:
+                        delta = 0
+                    # R_index = [idxrf[0] - int(scanwidthr/2) + int(delta/2), idxrf[1] - halfblock - scanspacing - scanheight]
+                    R_index = [idxrf[0] - int(scanwidthr/2) + delta, idxrf[1] - halfblock - scanspacing - scanheight]
 
                 if L_index[0] < 0:
                     L_index[0] = 0
@@ -303,8 +314,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock):
                     R_index[0] = xsize-scanwidthr
         ####### end processing
         
-        leftblob = np.multiply(leftblob, 0.1)
-        rightblob = np.multiply(rightblob, 0.1)
+        # leftblob = np.multiply(leftblob, 0.1)
+        # rightblob = np.multiply(rightblob, 0.1)
 
 
         if(laneleftcount > min_data_good):
@@ -343,9 +354,13 @@ def Thread_Process(buffer, flag, out_flag, buff_lock):
             slope = d_quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
             rads = np.arctan(slope)
             rightangle = rads/np.pi*180 + 180
+        
+        offseterror = leftx - rightx 
+        angleerror = ((leftangle + rightangle)/2)-90
 
-
+        outlist = (offseterror, angleerror)
         out_flag.set()
+
         cv2.imshow('frame', frame)
         # cv2.imshow('left', leftblob)
         # cv2.imshow('right', rightblob)
@@ -384,10 +399,10 @@ distance_ready = threading.Event()
 output_ready = threading.Event()
 image_buffer_lock = threading.Lock()
 hi = 0
-
+errorlist = (0,0)
 # start threads
 Capture_Thread = threading.Thread(target=Thread_Capture, args=(img_buf, image_ready, image_buffer_lock))
-Process_Thread = threading.Thread(target=Thread_Process, args=(img_buf, image_ready, output_ready, image_buffer_lock))
+Process_Thread = threading.Thread(target=Thread_Process, args=(img_buf, image_ready, output_ready, image_buffer_lock, error_list))
 Distance_Thread = threading.Thread(target=Thread_Distance, args=(distance_ready, hi))
 print("threads created")
 
@@ -399,41 +414,35 @@ start_time = time.time()
 while not exit:
     output_ready.wait()
     output_ready.clear()
+    offseterror = errorlist[0]
+    angleerror = errorlist[1]
     #offset error in pixels from center screen +means turn left to correct
-    # offseterror = leftx - rightx 
-    # offset_adj = PIDoffset.update_error(offseterror);
+    offset_adj = PIDoffset.update_error(offseterror);
     #angle error in degrees from vertical +means turn left to correct
-    # angleerror = ((leftangle + rightangle)/2)-90
-    # angle_adj = PIDangle.update_error(angleerror);
+    angle_adj = PIDangle.update_error(angleerror);
 
-    # servocmd = servo_center + offset_adj + angle_adj
-    # servocmd = 132 - int(((leftangle + rightangle)/2)-90)*3 + int(offset/2)
-
-    #if servocmd > 255:
-    #    servocmd = 255
-    #elif servocmd < 0:
-    #    servocmd = 0
+    servocmd = int(servo_center + offset_adj + angle_adj)
+    if servocmd > 255:
+       servocmd = 255
+    elif servocmd < 0:
+       servocmd = 0
     
-    #if output:
-    #    if distance < stopdistance:
-    #        pathfindershield.motorservocmd4(50,1,0,132)
-    #    else:
-    #        pathfindershield.motorservocmd4(0, 0, 0, angle)
+    if output:
+       if distance < stopdistance:
+           pathfindershield.motorservocmd4(0,0,1,servo_center)
+       else:
+           pathfindershield.motorservocmd4(55, 0, 0, servocmd)
 
-
-
-
-
-    # proc_time = (time.time() - start_time)*1000
-    # if proc_time_s == 0:
-    #     proc_time_s = proc_time
-    # else:
-    #     proc_time_s = 0.9*proc_time_s + 0.1*proc_time
-    # fps_calc = int(1000/proc_time_s)
-    # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    # sys.stdout.write("\rtime:%dmS, fps:%d       " % (proc_time_s, fps_calc))
-    # sys.stdout.flush()    
-    # start_time = time.time()
+    proc_time = (time.time() - start_time)*1000
+    if proc_time_s == 0:
+        proc_time_s = proc_time
+    else:
+        proc_time_s = 0.9*proc_time_s + 0.1*proc_time
+    fps_calc = int(1000/proc_time_s)
+    sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
+    sys.stdout.write("\rtime:%dmS, fps:%d       " % (proc_time_s, fps_calc))
+    sys.stdout.flush()    
+    start_time = time.time()
     
 
 Process_Thread.join()
