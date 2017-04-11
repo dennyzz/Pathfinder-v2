@@ -251,8 +251,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                     delta = laneleft[laneleftcount-1][0] - laneleft[laneleftcount-2][0]
                 else:
                     delta = 0
-                # L_index = [idxlf[0] - int(scanwidthl/2) + int(delta/2), idxlf[1] - halfblock - scanspacing]
-                L_index = [idxlf[0] - int(scanwidthl/2) + delta, idxlf[1] - halfblock - scanspacing]
+                # L_index = [idxlf[0] - int(scanwidthl/2) + int(delta/2), idxlf[1] - halfblock - scanspacing - scanheight]
+                L_index = [idxlf[0] - int(scanwidthl/2) + delta, idxlf[1] - halfblock - scanspacing - scanheight]
 
             if right[idxr] < threshold:
                 cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 1)
@@ -268,8 +268,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                     delta = laneright[lanerightcount-1][0] - laneright[lanerightcount-2][0]
                 else:
                     delta = 0
-                # R_index = [idxrf[0] - int(scanwidthr/2) + int(delta/2), idxrf[1] - halfblock - scanspacing]
-                R_index = [idxrf[0] - int(scanwidthr/2) + delta, idxrf[1] - halfblock - scanspacing]
+                # R_index = [idxrf[0] - int(scanwidthr/2) + int(delta/2), idxrf[1] - halfblock - scanspacing - scanheight]
+                R_index = [idxrf[0] - int(scanwidthr/2) + delta, idxrf[1] - halfblock - scanspacing - scanheight]
 
             if L_index[0] < 0:
                 L_index[0] = 0
@@ -302,7 +302,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         rads = np.arctan(slope)
         leftangle = rads/np.pi*180
 
-        goodcheck &= ~0x10
+        goodcheck &= ~0x01
         
     if(lanerightcount > min_data_good):
         # popt, pcov = curve_fit(quadratic, x, y)
@@ -324,7 +324,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
         rads = np.arctan(slope)
         rightangle = rads/np.pi*180
 
-        goodcheck &= ~0x01
+        goodcheck &= ~0x10
 
     # the idea now is to use the curve fit at scan point to find both the lane offsets, and tangents as angle offsets
     # what happens if we dont' have enough points? well currently, we just use the old value
