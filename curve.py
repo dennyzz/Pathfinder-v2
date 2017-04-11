@@ -78,8 +78,8 @@ def lsqfit(points,M):
     return M_ * points
 
 
-# cap = cv2.VideoCapture("footage/radius2angle75.mp4")
-cap = cv2.VideoCapture("footage/0degree.mp4 ")
+cap = cv2.VideoCapture("footage/radius2angle75.mp4")
+# cap = cv2.VideoCapture("footage/0degree.mp4 ")
 # cap = cv2.VideoCapture("footage/rootbeercar.mp4 ")
 # fps = cap.get(cv2.CAP_PROP_FPS)
 
@@ -306,7 +306,12 @@ while cap:
                 # gray[(idxlf[1]-halfblock):(idxlf[1]+halfblock+1), (idxlf[0]-halfblock):(idxlf[0]+halfblock+1)] = cv2.adaptiveThreshold(grayblock, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, blocksize, 0)
                 ret, gray[(idxlf[1]-halfblock):(idxlf[1]+halfblock+1), (idxlf[0]-halfblock):(idxlf[0]+halfblock+1)] = cv2.threshold(grayblock, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
                 scanwidthl = scanwidthmin
-                L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1] - halfblock - scanspacing]
+                if laneleftcount >= 2:
+                    delta = laneleft[laneleftcount-1][0] - laneleft[laneleftcount-2][0]
+                else:
+                    delta = 0
+                # L_index = [idxlf[0] - int(scanwidthl/2) + int(delta/2), idxlf[1] - halfblock - scanspacing]
+                L_index = [idxlf[0] - int(scanwidthl/2) + delta, idxlf[1] - halfblock - scanspacing]
             if right[idxr] < threshold:
                 cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 2)
                 scanwidthr = scanwidth
@@ -320,7 +325,12 @@ while cap:
                 # gray[(idxrf[1]-halfblock):(idxrf[1]+halfblock+1), (idxrf[0]-halfblock):(idxrf[0]+halfblock+1)] = cv2.adaptiveThreshold(grayblock, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, blocksize, 0)
                 ret, gray[(idxrf[1]-halfblock):(idxrf[1]+halfblock+1), (idxrf[0]-halfblock):(idxrf[0]+halfblock+1)] = cv2.threshold(grayblock, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
                 scanwidthr = scanwidthmin
-                R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1] - halfblock - scanspacing]
+                if lanerightcount >= 2:
+                    delta = laneright[lanerightcount-1][0] - laneright[lanerightcount-2][0]
+                else:
+                    delta = 0
+                # R_index = [idxrf[0] - int(scanwidthr/2) + int(delta/2), idxrf[1] - halfblock - scanspacing]
+                R_index = [idxrf[0] - int(scanwidthr/2) + delta, idxrf[1] - halfblock - scanspacing]
 
             if L_index[0] < 0:
                 L_index[0] = 0

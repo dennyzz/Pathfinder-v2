@@ -246,7 +246,13 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                 laneleftcount += 1
                 cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), red, 1)
                 scanwidthl = scanwidthmin
-                L_index = [idxlf[0] - int(scanwidthl/2), idxlf[1] - halfblock - scanspacing - scanheight]
+                # compuute a delta term for the steeper curves 
+                if laneleftcount >= 2:
+                    delta = laneleft[laneleftcount-1][0] - laneleft[laneleftcount-2][0]
+                else:
+                    delta = 0
+                # L_index = [idxlf[0] - int(scanwidthl/2) + int(delta/2), idxlf[1] - halfblock - scanspacing]
+                L_index = [idxlf[0] - int(scanwidthl/2) + delta, idxlf[1] - halfblock - scanspacing]
 
             if right[idxr] < threshold:
                 cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 1)
@@ -258,7 +264,12 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
                 lanerightcount += 1
                 cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), blue, 1)
                 scanwidthr = scanwidthmin
-                R_index = [idxrf[0] - int(scanwidthr/2), idxrf[1] - halfblock - scanspacing - scanheight]
+                if lanerightcount >= 2:
+                    delta = laneright[lanerightcount-1][0] - laneright[lanerightcount-2][0]
+                else:
+                    delta = 0
+                # R_index = [idxrf[0] - int(scanwidthr/2) + int(delta/2), idxrf[1] - halfblock - scanspacing]
+                R_index = [idxrf[0] - int(scanwidthr/2) + delta, idxrf[1] - halfblock - scanspacing]
 
             if L_index[0] < 0:
                 L_index[0] = 0
