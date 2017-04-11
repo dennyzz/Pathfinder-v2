@@ -34,7 +34,7 @@ ysize = res_y
 # turn off the output and drive commands
 output = 1
 # Distance for collision detection
-stopdistance = 200
+stopdistance = 100
 # Servo value for approximate middle value
 servo_center = 132
 
@@ -161,7 +161,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     ### MOST GLOBAL TUNING PARAMETERS ###
 
     # width of the initial scan block
-    scanwidth = 100
+    scanwidth = 110
     # width of the scan block when a valid point has been found previously (smaller)
     scanwidthmin = 30
     # height of the scan block
@@ -171,9 +171,9 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     # total number of scan lines vertically
     scanlines = 15
     # offset pixels inwards (x) for the initial scan block
-    scanstartoffset = 25
+    scanstartoffset = 15
     # pixels from the bottom that the scanlines first index starts from
-    scanstartline = 45
+    scanstartline = 50
     # the threshold for detection for post correlation
     threshold = 1
     # value for minimum number of good edges detected for curve fitting 
@@ -374,6 +374,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
 
         outlist[0] = offseterror
         outlist[1] = angleerror
+        outlist[2] = goodcheck
         out_flag.set()
 
         cv2.imshow('frame', frame)
@@ -399,6 +400,12 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
 
 
 # main is the output task!
+
+# try file writing and plotting error
+f = open("log.csv", 'w')
+f.write("Error log data for Pathfinder\r\n")
+f.write("time, t_taken, offerror, angleerror, offsetpid, anglepid, output\r\n")
+
 proc_time_s = 0
 
 PIDoffset = PID.PID(1.0, 0.0, 1.0)
@@ -412,7 +419,7 @@ output_ready = threading.Event()
 image_buffer_lock = threading.Lock()
 
 ret_dist = [2000]
-error_list = [0,0]
+error_list = [0,0,0]
 
 # start threads
 Capture_Thread = threading.Thread(target=Thread_Capture, args=(img_buf, image_ready, image_buffer_lock))
@@ -428,7 +435,6 @@ start_time = time.time()
 while not exit:
     output_ready.wait()
     output_ready.clear()
-    print(error_list)
     offseterror = error_list[0]
     angleerror = error_list[1]
     #offset error in pixels from center screen +means turn left to correct
@@ -443,15 +449,19 @@ while not exit:
        servocmd = 0
        
     distance = ret_dist[0]
+    leds = error_list[2]
 
     if output:
        if distance < stopdistance:
            pathfindershield.motorservocmd4(0,0,1,servo_center)
+           leds |= 0xFF
        else:
-           print("send cmd")
            pathfindershield.motorservocmd4(55, 0, 0, servocmd)
 
+    pathfindershield.motorservoledcmd(leds)
+
     proc_time = (time.time() - start_time)*1000
+    f.write("%d, %d, %d, %d, %.2f, %.2f, %d\r\n" % (time.time()*1000, proc_time, offseterror, angleerror, offset_adj, angle_adj, servocmd))
     if proc_time_s == 0:
         proc_time_s = proc_time
     else:
