@@ -177,6 +177,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     # scan angle distance is the distance from scanstartline that we take our angle measurement from. 
     # this gives us some amount of "predictive" driving allowing us to see the curve ahead a bit
     scanangledistance = 40
+    #length of lines drawn to show the current angle 
+    drawanglelength = 20
     # the threshold for detection for post correlation
     threshold = 1
     # value for minimum number of good edges detected for curve fitting 
@@ -190,6 +192,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     blue = (255,0,0)
     yellow = (0,255,255)
     orange = (51, 153, 255)
+    cyan = (255, 255, 0)
+    pink = (100, 100, 255)
     # lane points saved into an array with a count variable 
     laneleft = np.empty((scanlines,2), dtype = np.int32)
     laneright= np.empty((scanlines,2), dtype = np.int32)
@@ -199,9 +203,10 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     # angle and offset datas used for course correction
     leftangle = 0
     rightangle = 0
-    leftx = xsize/2
-    rightx = xsize/2
     prevcmd = servo_center
+    left_off = xsize/2
+    right_off = xsize/2
+    
     # # initialize the camera and grab a reference to the raw camera capture
 
     while not exit:
@@ -343,9 +348,17 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                 prevpoint = (x,y)
 
             # offset computed from curve fit at scan start location
-            leftx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+            leftx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+            left_off = xsize/2 - leftx
             # angle computed from tangent of curve fit at scan start location
             slope = d_quadratic(ysize-scanstartline-scanangledistance, popt[0], popt[1], popt[2])
+
+            anglepty = ysize-scanstartline-scanangledistance
+            angleptx = quadratic(anglepty, popt[0], popt[1], popt[2])
+            p1 = (int(angleptx - drawanglelength*slope), int(anglepty - drawanglelength))
+            p2 = (int(angleptx + drawanglelength*slope), int(anglepty + drawanglelength))
+            cv2.line(frame, p1, p2, pink, 1)
+
             rads = np.arctan(slope)
             leftangle = rads/np.pi*180
 
@@ -365,15 +378,27 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                 prevpoint = (x,y)
 
             # offset computed from curve fit at scan start location
-            rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2]) - xsize/2
+            rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+            right_off = rightx - xsize/2
             # angle computed from tangent of curve fit at scan start location
             slope = d_quadratic(ysize-scanstartline-scanangledistance, popt[0], popt[1], popt[2])
+            # draw the angle line
+            anglepty = ysize-scanstartline-scanangledistance
+            angleptx = quadratic(anglepty, popt[0], popt[1], popt[2])
+            p1 = (int(angleptx - drawanglelength*slope), int(anglepty - drawanglelength))
+            p2 = (int(angleptx + drawanglelength*slope), int(anglepty + drawanglelength))
+            cv2.line(frame, p1, p2, cyan, 1)
+
             rads = np.arctan(slope)
             rightangle = rads/np.pi*180
 
             goodcheck &= ~0x10
         
-        offseterror = leftx - rightx 
+        offseterror = left_off - right_off 
+        
+        cv2.line(frame, (int(xsize/2), 0), (int(xsize/2), ysize), green, 1)
+        cv2.line(frame, (int(xsize/2 - offseterror), 0), (int(xsize/2 - offset), ysize), cyan, 1)
+
         angleerror = ((leftangle + rightangle)/2)
 
         outlist[0] = offseterror
@@ -382,6 +407,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         out_flag.set()
 
         cv2.imshow('frame', frame)
+        cv2.namedWindow('image',cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('image', 800,600)
         # cv2.imshow('left', leftblob)
         # cv2.imshow('right', rightblob)
 
