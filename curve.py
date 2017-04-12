@@ -198,17 +198,23 @@ scanheight = 15
 scanspacing = 15
 scanlines = 40
 threshold = 1
+# scan angle distance is the distance from scanstartline that we take our angle measurement from. 
+# this gives us some amount of "predictive" driving allowing us to see the curve ahead a bit
+scanangledistance = 200
+#length of lines drawn to show the current angle 
+drawanglelength = 200
 # value for minimum number of good edges detected for curve fitting 
 min_data_good = 6
 # pixels from the bottom that the scanlines first index starts from
 scanstartline = 150
-
 
 green = (0,255,0)
 red = (0,0,255)
 blue = (255,0,0)
 yellow = (0,255,255)
 orange = (51, 153, 255)
+cyan = (255, 255, 0)
+pink = (100, 100, 255)
 laneleft = np.empty((scanlines,2), dtype = np.int32)
 laneright= np.empty((scanlines,2), dtype = np.int32)
 laneleftcount = 0
@@ -217,12 +223,14 @@ lanerightcount = 0
 # angle and offset datas used for course correction
 leftangle = 0
 rightangle = 0
-leftx = xsize/2
-rightx = xsize/2
+left_off = xsize/2
+right_off = xsize/2
 
 start_time = time.time()
 while cap:
     ret, frame = cap.read()
+    if ret == 0:
+        break
     start_pre_time = time.time()
     # step1: grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -362,9 +370,15 @@ while cap:
             prevpoint = (x,y)
 
         # offset computed from curve fit at scan start location
-        leftx = xsize/2 - quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        leftx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        left_off = xsize/2 - leftx
         # angle computed from tangent of curve fit at scan start location
-        slope = d_quadratic(ysize-scanstartline, popt[0], popt[1])
+        slope = d_quadratic(ysize-scanstartline-scanangledistance, popt[0], popt[1])
+        anglepty = ysize-scanstartline-scanangledistance
+        angleptx = quadratic(anglepty, popt[0], popt[1], popt[2])
+        p1 = (int(angleptx - drawanglelength*slope), int(anglepty - drawanglelength))
+        p2 = (int(angleptx + drawanglelength*slope), int(anglepty + drawanglelength))
+        cv2.line(frame, p1, p2, pink, 3)
         rads = np.arctan(slope)
         leftangle = rads/np.pi*180
     if(lanerightcount > min_data_good):
@@ -380,14 +394,23 @@ while cap:
             cv2.line(frame,prevpoint,(x,y),orange,2)
             prevpoint = (x,y)
 
-        # offset computed from curve fit at scan start location
-        rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2]) - xsize/2
+        # offset computed from curve fit at scan start locationd
+        rightx = quadratic(ysize-scanstartline, popt[0], popt[1], popt[2])
+        right_off = rightx - xsize/2
         # angle computed from tangent of curve fit at scan start location
-        slope = d_quadratic(ysize-scanstartline, popt[0], popt[1])
+        slope = d_quadratic(ysize-scanstartline-scanangledistance, popt[0], popt[1])
+        # draw the angle line
+        anglepty = ysize-scanstartline-scanangledistance
+        angleptx = quadratic(anglepty, popt[0], popt[1], popt[2])
+        p1 = (int(angleptx - drawanglelength*slope), int(anglepty - drawanglelength))
+        p2 = (int(angleptx + drawanglelength*slope), int(anglepty + drawanglelength))
+        cv2.line(frame, p1, p2, pink, 3)
         rads = np.arctan(slope)
         rightangle = rads/np.pi*180
 
-    offset = leftx - rightx 
+    offset = left_off - right_off 
+    cv2.line(frame, (int(xsize/2), 0), (int(xsize/2), ysize), green, 2)
+    cv2.line(frame, (int(xsize/2 - offset), 0), (int(xsize/2 - offset), ysize), cyan, 2)
     angle = ((rightangle + leftangle)/2)
     proc_post_time = (time.time() - start_post_time)*1000
 
