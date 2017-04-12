@@ -32,7 +32,7 @@ ysize = res_y
 # TUNING PARAMETERS FOR OUTPUT STAGE
 
 # turn off the output and drive commands
-output = 1
+output = 0
 # Distance for collision detection
 stopdistance = 250
 # Servo value for approximate middle value
@@ -178,7 +178,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     # this gives us some amount of "predictive" driving allowing us to see the curve ahead a bit
     scanangledistance = 40
     #length of lines drawn to show the current angle 
-    drawanglelength = 20
+    drawanglelength = 40
     # the threshold for detection for post correlation
     threshold = 1
     # value for minimum number of good edges detected for curve fitting 
@@ -332,8 +332,6 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         # leftblob = np.multiply(leftblob, 0.1)
         # rightblob = np.multiply(rightblob, 0.1)
 
-        
-        cv2.line(frame,(0,ysize-scanstartline-scanangledistance),(xsize,ysize-scanstartline-scanangledistance),green,1)
         goodcheck = 0x31
         if(laneleftcount > min_data_good):
             # flip the axes to get a real function
@@ -397,7 +395,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         offseterror = left_off - right_off 
         
         cv2.line(frame, (int(xsize/2), 0), (int(xsize/2), ysize), green, 1)
-        cv2.line(frame, (int(xsize/2 - offseterror), 0), (int(xsize/2 - offset), ysize), cyan, 1)
+        cv2.line(frame, (int((xsize - offseterror)/2), 0), (int((xsize - offseterror)/2), ysize), cyan, 1)
 
         angleerror = ((leftangle + rightangle)/2)
 
@@ -406,9 +404,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         outlist[2] = goodcheck
         out_flag.set()
 
+        cv2.namedWindow('frame',cv2.WINDOW_NORMAL)
         cv2.imshow('frame', frame)
-        cv2.namedWindow('image',cv2.WINDOW_NORMAL)
-        cv2.resizeWindow('image', 800,600)
         # cv2.imshow('left', leftblob)
         # cv2.imshow('right', rightblob)
 
