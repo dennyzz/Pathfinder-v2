@@ -34,7 +34,7 @@ ysize = res_y
 # turn off the output and drive commands
 output = 1
 # Distance for collision detection
-stopdistance = 100
+stopdistance = 250
 # Servo value for approximate middle value
 servo_center = 132
 
@@ -480,6 +480,7 @@ Process_Thread.join()
 Capture_Thread.join()
 Distance_Thread.join()
 
+pathfindershield.motorservocmd4(0,0,0,133)
 print("all threads terminated, exited normally")
 
 sys.exit(0)
