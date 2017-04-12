@@ -405,6 +405,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         out_flag.set()
 
         cv2.imshow('frame', frame)
+        cv2.namedWindow('image',cv2.WINDOW_NORMAL)
+        cv2.resizeWindow('image', 800,600)
         # cv2.imshow('left', leftblob)
         # cv2.imshow('right', rightblob)
 
