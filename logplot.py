@@ -9,7 +9,7 @@ angle = []
 offpid = []
 anglepid = []
 output = []
-with open('log.csv', 'rt') as csvfile:
+with open('./log.csv', 'rt') as csvfile:
 	logreader = csv.reader(csvfile, delimiter=',', quotechar='|')
 	next(logreader)
 	next(logreader)
@@ -21,8 +21,6 @@ with open('log.csv', 'rt') as csvfile:
 		offpid.append(float(row[4]))
 		anglepid.append(float(row[5]))
 		output.append(int(row[6]))
-print(t)
-print(t_taken)
 plt.plot(t, t_taken)
 plt.figure(2)
 plt.plot(t, off, 'r', t, angle, 'b', t, offpid, 'g-', t, output, 'y')

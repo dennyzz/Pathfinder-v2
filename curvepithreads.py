@@ -201,7 +201,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     rightangle = 0
     leftx = xsize/2
     rightx = xsize/2
-
+    prevcmd = servo_center
     # # initialize the camera and grab a reference to the raw camera capture
 
     while not exit:
@@ -327,7 +327,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         # leftblob = np.multiply(leftblob, 0.1)
         # rightblob = np.multiply(rightblob, 0.1)
 
-
+        
+        cv2.line(frame,(0,ysize-scanstartline-scanangledistance),(xsize,ysize-scanstartline-scanangledistance),green,1)
         goodcheck = 0x31
         if(laneleftcount > min_data_good):
             # flip the axes to get a real function
@@ -405,7 +406,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
 # main is the output task!
 
 # try file writing and plotting error
-f = open("log.csv", 'w')
+f = open("./log.csv", 'w')
 f.write("Error log data for Pathfinder\r\n")
 f.write("time, t_taken, offerror, angleerror, offsetpid, anglepid, output\r\n")
 
@@ -453,13 +454,14 @@ while not exit:
        
     distance = ret_dist[0]
     leds = error_list[2]
-
+    
     if output:
        if distance < stopdistance:
-           pathfindershield.motorservocmd4(0,0,1,servo_center)
+           pathfindershield.motorservocmd4(0,0,1,prevcmd)
            leds |= 0xFF
        else:
            pathfindershield.motorservocmd4(65, 0, 0, servocmd)
+           prevcmd = servocmd
 
     pathfindershield.motorservoledcmd(leds)
 
