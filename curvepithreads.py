@@ -32,12 +32,17 @@ ysize = res_y
 # TUNING PARAMETERS FOR OUTPUT STAGE
 
 # turn off the output and drive commands
-output = 0
+output = 1
+# Distance for object detection to slow down
+slowdistance = 800
 # Distance for collision detection
-stopdistance = 250
+stopdistance = 400
 # Servo value for approximate middle value
 servo_center = 132
-
+# Maximum speed pwm value
+max_speed = 100
+# Minimum speed pwm value any slower and we won't be able to move
+min_speed = 50
 
 def quadratic(x, a, b, c):
     return a*x**2 + b*x + c
@@ -91,7 +96,7 @@ def Thread_Distance(flag, ret):
     # initialize the VL53L0x
     proc_time_s = 0
     tof = VL53L0X.VL53L0X()
-    tof.start_ranging(VL53L0X.VL53L0X_BETTER_ACCURACY_MODE)
+    tof.start_ranging(VL53L0X.VL53L0X_GOOD_ACCURACY_MODE)
     start_cap_time = time.time()
     while not exit:
         distance = tof.get_distance()
@@ -162,6 +167,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
 
     # width of the initial scan block
     scanwidth = 110
+    # scanwidth med size trying to use not such a big scan block when erroring.
+    scanwidthmed = 60
     # width of the scan block when a valid point has been found previously (smaller)
     scanwidthmin = 30
     # height of the scan block
@@ -203,7 +210,6 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     # angle and offset datas used for course correction
     leftangle = 0
     rightangle = 0
-    prevcmd = servo_center
     left_off = xsize/2
     right_off = xsize/2
     
@@ -287,7 +293,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                     if scanwidthl == scanwidthmin: # if from good to failing
                         L_index[0] = int(L_index[0] - ((scanwidth - scanwidthmin) / 2))
                     cv2.rectangle(frame, (idxlf[0]-halfblock, idxlf[1]-halfblock), (idxlf[0]+halfblock, idxlf[1]+halfblock), yellow, 1)
-                    scanwidthl = scanwidth
+                    scanwidthl = scanwidthmed
                     # print("left BAD")
                     L_index = [L_index[0], L_index[1] - scanspacing - scanheight]
                 else:
@@ -304,7 +310,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                     L_index = [idxlf[0] - int(scanwidthl/2) + delta, idxlf[1] - halfblock - scanspacing - scanheight]
                 if right[idxr] < threshold:
                     cv2.rectangle(frame, (idxrf[0]-halfblock, idxrf[1]-halfblock), (idxrf[0]+halfblock, idxrf[1]+halfblock), yellow, 1)
-                    scanwidthr = scanwidth
+                    scanwidthr = scanwidthmed
                     R_index = [R_index[0], R_index[1] - scanspacing - scanheight]    
                 else:
                     laneright[lanerightcount] = idxrf
@@ -319,6 +325,8 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
                     # R_index = [idxrf[0] - int(scanwidthr/2) + int(delta/2), idxrf[1] - halfblock - scanspacing - scanheight]
                     R_index = [idxrf[0] - int(scanwidthr/2) + delta, idxrf[1] - halfblock - scanspacing - scanheight]
 
+
+                # if the box is out of the frame for some reason, set to edge of frame
                 if L_index[0] < 0:
                     L_index[0] = 0
                 elif L_index[0] > xsize-scanwidthr:
@@ -435,8 +443,10 @@ f.write("Error log data for Pathfinder\r\n")
 f.write("time, t_taken, offerror, angleerror, offsetpid, anglepid, output\r\n")
 
 proc_time_s = 0
-
-PIDoffset = PID.PID(0.35, 0.0, 1.0)
+if slowdistance <= stopdistance:
+    print("slow and stop distance badly configured")
+    slowdistance = stopdistance + 1
+PIDoffset = PID.PID(0.25, 0.001, 1.0)
 PIDangle = PID.PID(1.5, 0.0, 1.0)
 
 img_buf = np.empty((res_y, res_x, 3), dtype=np.uint8)
@@ -448,7 +458,8 @@ image_buffer_lock = threading.Lock()
 
 ret_dist = [2000]
 error_list = [0,0,0]
-
+prevcmd = servo_center
+speed = min_speed
 # start threads
 Capture_Thread = threading.Thread(target=Thread_Capture, args=(img_buf, image_ready, image_buffer_lock))
 Process_Thread = threading.Thread(target=Thread_Process, args=(img_buf, image_ready, output_ready, image_buffer_lock, error_list))
@@ -480,25 +491,38 @@ while not exit:
     leds = error_list[2]
     
     if output:
-       if distance < stopdistance:
-           pathfindershield.motorservocmd4(0,0,1,prevcmd)
-           leds |= 0xFF
-       else:
-           pathfindershield.motorservocmd4(65, 0, 0, servocmd)
-           prevcmd = servocmd
+        if distance < stopdistance:
+            cmd = prevcmd
+            leds |= 0xFF
+            brake = 1
+            speed = min_speed
+        elif distance < slowdistance:
+            # linear scale from slow distance to stop distance of max_speed to 50
+            proportional_distance = (slowdistance - distance)/(slowdistance - stopdistance)
+            speed = int(min_speed + (1-proportional_distance) * (max_speed-min_speed))
+            cmd = servocmd
+            leds |= 0xEE
+            brake = 0
+            print("speed" + str(speed))
+        else:
+            speed = max_speed
+            brake = 0
+            cmd = servocmd
+            prevcmd = servocmd
+        pathfindershield.motorservocmd4(speed, 0, brake, cmd)
 
     pathfindershield.motorservoledcmd(leds)
 
     proc_time = (time.time() - start_time)*1000
-    f.write("%d, %d, %d, %d, %.2f, %.2f, %d\r\n" % (time.time()*1000, proc_time, offseterror, angleerror, offset_adj, angle_adj, servocmd))
+    f.write("%d, %d, %d, %d, %.2f, %.2f, %d\r\n" % (time.time()*1000, proc_time, offseterror, angleerror, offset_adj, angle_adj, speed))
     if proc_time_s == 0:
         proc_time_s = proc_time
     else:
         proc_time_s = 0.9*proc_time_s + 0.1*proc_time
     fps_calc = int(1000/proc_time_s)
     # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    sys.stdout.write("\rtime:%dmS,%dfps,d:%d       " % (proc_time_s, fps_calc, distance))
-    sys.stdout.flush()    
+    sys.stdout.write("\rtime:%dmS,%dfps,d:%dspe:%d      " % (proc_time_s, fps_calc, distance, speed))
+    sys.stdout.flush()
     start_time = time.time()
     
 
