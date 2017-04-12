@@ -413,7 +413,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         out_flag.set()
 
         cv2.namedWindow('frame',cv2.WINDOW_NORMAL)
-        cv2.imshow('frame', frame)
+        # cv2.imshow('frame', frame)
         # cv2.imshow('left', leftblob)
         # cv2.imshow('right', rightblob)
 
@@ -503,7 +503,6 @@ while not exit:
             cmd = servocmd
             leds |= 0xEE
             brake = 0
-            print("speed" + str(speed))
         else:
             speed = max_speed
             brake = 0
@@ -514,7 +513,7 @@ while not exit:
     pathfindershield.motorservoledcmd(leds)
 
     proc_time = (time.time() - start_time)*1000
-    f.write("%d, %d, %d, %d, %.2f, %.2f, %d\r\n" % (time.time()*1000, proc_time, offseterror, angleerror, offset_adj, angle_adj, speed))
+    f.write("%d, %d, %d, %d, %.2f, %.2f, %d\r\n" % (time.time()*1000, proc_time, offseterror, angleerror, offset_adj, angle_adj, cmd))
     if proc_time_s == 0:
         proc_time_s = proc_time
     else:
