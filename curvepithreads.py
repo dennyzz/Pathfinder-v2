@@ -33,16 +33,18 @@ ysize = res_y
 
 # turn off the output and drive commands
 output = 1
+# turn off the file logging output
+logging = 1
 # Distance for object detection to slow down
 slowdistance = 400
 # Distance for collision detection
-stopdistance = 200
+stopdistance = 250
 # Servo value for approximate middle value
 servo_center = 132
 # Maximum speed pwm value
-max_speed = 65
+max_speed = 75
 # Minimum speed pwm value any slower and we won't be able to move
-min_speed = 50
+min_speed = 55
 
 def quadratic(x, a, b, c):
     return a*x**2 + b*x + c
@@ -166,7 +168,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     ### MOST GLOBAL TUNING PARAMETERS ###
 
     # width of the initial scan block
-    scanwidth = 110
+    scanwidth = 120
     # scanwidth med size trying to use not such a big scan block when erroring.
     scanwidthmed = 60
     # width of the scan block when a valid point has been found previously (smaller)
@@ -178,12 +180,12 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     # total number of scan lines vertically
     scanlines = 15
     # offset pixels inwards (x) for the initial scan block
-    scanstartoffset = 15
+    scanstartoffset = 0
     # pixels from the bottom that the scanlines first index starts from
     scanstartline = 50
     # scan angle distance is the distance from scanstartline that we take our angle measurement from. 
     # this gives us some amount of "predictive" driving allowing us to see the curve ahead a bit
-    scanangledistance = 40
+    scanangledistance = 45
     #length of lines drawn to show the current angle 
     drawanglelength = 40
     # the threshold for detection for post correlation
@@ -347,10 +349,10 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             y = laneleft[0:laneleftcount, 0]
             popt, pcov = curve_fit(quadratic, x, y)
 
-            prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
-            for y in range(10, ysize/2, 10):
+            prevpoint = (int(quadratic(int(ysize/2), popt[0], popt[1], popt[2])), int(ysize/2))
+            for y in range(int(ysize/2), ysize, 10):
                 x = int(quadratic(y, popt[0], popt[1], popt[2]))
-                cv2.line(frame,prevpoint,(x,y),orange,2)
+                cv2.line(frame,prevpoint,(x,y),orange,1)
                 prevpoint = (x,y)
 
             # offset computed from curve fit at scan start location
@@ -363,7 +365,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             angleptx = quadratic(anglepty, popt[0], popt[1], popt[2])
             p1 = (int(angleptx - drawanglelength*slope), int(anglepty - drawanglelength))
             p2 = (int(angleptx + drawanglelength*slope), int(anglepty + drawanglelength))
-            cv2.line(frame, p1, p2, pink, 1)
+            cv2.line(frame, p1, p2, pink, 2)
 
             rads = np.arctan(slope)
             leftangle = rads/np.pi*180
@@ -377,10 +379,10 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             popt, pcov = curve_fit(quadratic, x, y)
             x = 0
             y = quadratic(0, popt[0], popt[1], popt[2])
-            prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
-            for y in range(10, ysize/2, 10):
+            prevpoint = (int(quadratic(int(ysize/2), popt[0], popt[1], popt[2])), int(ysize/2))
+            for y in range(int(ysize/2), ysize, 10):
                 x = int(quadratic(y, popt[0], popt[1], popt[2]))
-                cv2.line(frame,prevpoint,(x,y),orange,2)
+                cv2.line(frame,prevpoint,(x,y),orange,1)
                 prevpoint = (x,y)
 
             # offset computed from curve fit at scan start location
@@ -393,14 +395,14 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             angleptx = quadratic(anglepty, popt[0], popt[1], popt[2])
             p1 = (int(angleptx - drawanglelength*slope), int(anglepty - drawanglelength))
             p2 = (int(angleptx + drawanglelength*slope), int(anglepty + drawanglelength))
-            cv2.line(frame, p1, p2, cyan, 1)
+            cv2.line(frame, p1, p2, cyan, 2)
 
             rads = np.arctan(slope)
             rightangle = rads/np.pi*180
 
             goodcheck &= ~0x10
         
-        offseterror = left_off - right_off 
+        offseterror = int((left_off - right_off)/2)
         
         cv2.line(frame, (int(xsize/2), 0), (int(xsize/2), ysize), green, 1)
         cv2.line(frame, (int((xsize - offseterror)/2), 0), (int((xsize - offseterror)/2), ysize), cyan, 1)
@@ -437,16 +439,20 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
 # main is the output task!
 
 # try file writing and plotting error
-f = open("./log.csv", 'w')
-f.write("Error log data for Pathfinder\r\n")
-f.write("time, t_taken, offerror, angleerror, offsetpid, anglepid, output\r\n")
+if logging:
+    f = open("./log.csv", 'w')
+    f.write("Error log data for Pathfinder\r\n")
+    f.write("time, t_taken, offerror, angleerror, offsetpid, anglepid, output\r\n")
 
 proc_time_s = 0
 if slowdistance <= stopdistance:
     print("slow and stop distance badly configured")
     slowdistance = stopdistance + 1
-PIDoffset = PID.PID(0.5, 0.001, 1.0)
-PIDangle = PID.PID(1.5, 0.0, 1.0)
+PIDoffset = PID.PID(0.7,0.001, 0.5)
+PIDangle = PID.PID(1.3, 0.01, 0.5)
+# good values for 75 speed
+# PIDoffset = PID.PID(0.7,0.001, 1.0)
+# PIDangle = PID.PID(1.2, 0.01, 1.0)
 
 img_buf = np.empty((res_y, res_x, 3), dtype=np.uint8)
 
@@ -512,14 +518,15 @@ while not exit:
     pathfindershield.motorservoledcmd(leds)
 
     proc_time = (time.time() - start_time)*1000
-    f.write("%d, %d, %d, %d, %.2f, %.2f, %d\r\n" % (time.time()*1000, proc_time, offseterror, angleerror, offset_adj, angle_adj, cmd))
+    if logging:
+        f.write("%d, %d, %d, %d, %.2f, %.2f, %d\r\n" % (time.time()*1000, proc_time, offseterror, angleerror, offset_adj, angle_adj, cmd))
     if proc_time_s == 0:
         proc_time_s = proc_time
     else:
         proc_time_s = 0.9*proc_time_s + 0.1*proc_time
     fps_calc = int(1000/proc_time_s)
     # sys.stdout.write("\rtimetot:%dmS fps:%d algotime:%dmS posttime:%dmS pretime:%dmS       " %(smooth_time, fps_calc, proc_algo_time_s, proc_post_time_s, proc_pre_time_s))
-    sys.stdout.write("\rtime:%dmS,%dfps,d:%dspe:%d      " % (proc_time_s, fps_calc, distance, speed))
+    sys.stdout.write("\rt:%dmS,%dfps,d:%d      " % (proc_time_s, fps_calc, distance))
     sys.stdout.flush()
     start_time = time.time()
     
@@ -528,7 +535,7 @@ Process_Thread.join()
 Capture_Thread.join()
 Distance_Thread.join()
 
-pathfindershield.motorservocmd4(0,0,0,133)
+pathfindershield.motorservocmd4(0,0,0,prevcmd)
 print("all threads terminated, exited normally")
 
 sys.exit(0)
