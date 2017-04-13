@@ -348,7 +348,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             popt, pcov = curve_fit(quadratic, x, y)
 
             prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
-            for y in range(10, ysize, 10):
+            for y in range(10, ysize/2, 10):
                 x = int(quadratic(y, popt[0], popt[1], popt[2]))
                 cv2.line(frame,prevpoint,(x,y),orange,2)
                 prevpoint = (x,y)
@@ -378,7 +378,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
             x = 0
             y = quadratic(0, popt[0], popt[1], popt[2])
             prevpoint = (int(quadratic(0, popt[0], popt[1], popt[2])), 0)
-            for y in range(10, ysize, 10):
+            for y in range(10, ysize/2, 10):
                 x = int(quadratic(y, popt[0], popt[1], popt[2]))
                 cv2.line(frame,prevpoint,(x,y),orange,2)
                 prevpoint = (x,y)
@@ -445,8 +445,8 @@ proc_time_s = 0
 if slowdistance <= stopdistance:
     print("slow and stop distance badly configured")
     slowdistance = stopdistance + 1
-PIDoffset = PID.PID(0.35, 0.001, 1.0)
-PIDangle = PID.PID(1.4, 0.0, 1.0)
+PIDoffset = PID.PID(0.5, 0.001, 1.0)
+PIDangle = PID.PID(1.5, 0.0, 1.0)
 
 img_buf = np.empty((res_y, res_x, 3), dtype=np.uint8)
 
