@@ -34,13 +34,13 @@ ysize = res_y
 # turn off the output and drive commands
 output = 1
 # Distance for object detection to slow down
-slowdistance = 800
+slowdistance = 400
 # Distance for collision detection
-stopdistance = 400
+stopdistance = 200
 # Servo value for approximate middle value
 servo_center = 132
 # Maximum speed pwm value
-max_speed = 100
+max_speed = 65
 # Minimum speed pwm value any slower and we won't be able to move
 min_speed = 50
 
@@ -212,7 +212,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
     rightangle = 0
     left_off = xsize/2
     right_off = xsize/2
-    
+    cv2.namedWindow('frame',cv2.WINDOW_NORMAL)
     # # initialize the camera and grab a reference to the raw camera capture
 
     while not exit:
@@ -412,8 +412,7 @@ def Thread_Process(buffer, flag, out_flag, buff_lock, outlist):
         outlist[2] = goodcheck
         out_flag.set()
 
-        cv2.namedWindow('frame',cv2.WINDOW_NORMAL)
-        # cv2.imshow('frame', frame)
+        cv2.imshow('frame', frame)
         # cv2.imshow('left', leftblob)
         # cv2.imshow('right', rightblob)
 
@@ -446,8 +445,8 @@ proc_time_s = 0
 if slowdistance <= stopdistance:
     print("slow and stop distance badly configured")
     slowdistance = stopdistance + 1
-PIDoffset = PID.PID(0.25, 0.001, 1.0)
-PIDangle = PID.PID(1.5, 0.0, 1.0)
+PIDoffset = PID.PID(0.35, 0.001, 1.0)
+PIDangle = PID.PID(1.4, 0.0, 1.0)
 
 img_buf = np.empty((res_y, res_x, 3), dtype=np.uint8)
 
