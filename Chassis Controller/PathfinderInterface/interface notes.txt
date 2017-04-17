@@ -1,0 +1,76 @@
+Pathfinder Board interface 
+input TWI 
+8-bit PWM
+
+on revision 1 we cannot implement the full stackup of commands since we have bugs in the HW
+
+Since Timer1 is the high resolution we use it for the servos, and connect 
+
+// not valid on HW1
+TWI command Chart
+Pathfinder Interface Address : 0x5A = 'Z'
+
+Commands: 
+Motor_CMD_TYPE_1
+// not valid on HW1 
+| ADDR | CMD1 | MotorA_CTRL | MotorA_SPD | MotorB_CTRL | MotorB_SPD | Servo1  | Servo2  |
+| 0x5A | 0x01 | uint8_t     | uint8_t    | uint8_t     | uint8_t    | uint8_t | uint8_t |
+
+Motor_CMD_TYPE_2 
+// not valid on HW1 
+| ADDR | CMD2 | MotorA_CTRL | MotorA_SPD | MotorB_CTRL | MotorB_SPD |
+| 0x5A | 0x02 | uint8_t     | uint8_t    | uint8_t     | uint8_t    |
+
+Motor_CMD_TYPE_3 
+| ADDR | CMD3 | MotorA_CTRL | MotorA_SPD | Servo1  | 
+| 0x5A | 0x03 | uint8_t     | uint8_t    | uint8_t | 
+
+Motor_CMD_TYPE_4 
+| ADDR | CMD4 | MotorB_CTRL | MotorB_SPD | Servo2  | 
+| 0x5A | 0x04 | uint8_t     | uint8_t    | uint8_t | 
+
+LED_CMD
+| ADDR | CMD4 | LED_BITS | 
+| 0x5A | 0x10 | uint8_t  |
+
+Each MotorX_CTRL byte contains 
+DIR_BIT 0
+BRAKE_BIT 1
+
+each MotorX_SPD byte is 
+0-255 value for PWM motor speed
+
+each ServoN byte is
+0-255 value from full left to full right with 127 being approximately centered
+
+LED_BITS
+bit channels are from 
+| LED | 7   | 6   | 5   | 4   | 3   | 2   | 1   | 0   |
+| LED | PD4 | PD2 | PD1 | PD0 | PC3 | PC2 | PC1 | PC0 |
+
+pinmap!
+
+PC0
+PC1
+PC2
+PC3
+PC4	SDA
+PC5	SCL
+PC6	RST
+
+PD0
+PD1
+PD2
+PD3 SERVO2	OC2B
+PD4
+PD5	BPWM2	OC0B
+PD6	BPWM1	OC0A
+PD7	BnSLEEP
+
+PB0	AnSLEEP
+PB1	APWM1	OC1A
+PB2	APWM2	OC1B
+PB3 MOSI SERVO1 OC2A
+PB4	MISO
+PB5	SCK
+
