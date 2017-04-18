@@ -23,5 +23,5 @@ with open('./log.csv', 'rt') as csvfile:
 		output.append(int(row[6]))
 plt.plot(t, t_taken)
 plt.figure(2)
-plt.plot(t, off, 'r', t, angle, 'b', t, offpid, 'g-', t, output, 'y')
+plt.plot(t, off, 'r', t, angle, 'b', t, output, 'y')
 plt.show()
