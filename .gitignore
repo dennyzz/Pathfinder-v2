@@ -120,3 +120,4 @@ ENV/
 *.exe
 *.out
 *.app
+Chassis Controller/PathfinderInterface/Debug/
